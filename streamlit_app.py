@@ -561,6 +561,7 @@ if not EXCEL_PATH.exists():
 
 with st.spinner("A carregar dados..."):
     df = load_supply(EXCEL_PATH)
+    df["tonnes"] = df["tonnes"] * 1000
     if not ISMA_PATH.exists():
         st.error(f"Ficheiro ISMA não encontrado: {ISMA_PATH.resolve()}")
         st.stop()
@@ -1553,7 +1554,7 @@ elif page == "Index Detail":
             use_container_width=True,
             key="isma_radar_subindices",
         )
-
+"""
     # --------- ISMA vs BA Sales (eixos duplos) ----------
     st.markdown("### ISMA evolution vs BA Sales")
 
@@ -1623,7 +1624,7 @@ elif page == "Index Detail":
     )
 
     render_status_card(last_update_main_str, last_update_isma_str)
-
+"""
 # ----------------- Table Content -----------------
 if page == "Table Content":
     st.markdown("## 📋 Data Table")
