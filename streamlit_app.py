@@ -1554,77 +1554,79 @@ elif page == "Index Detail":
             use_container_width=True,
             key="isma_radar_subindices",
         )
-"""
-    # # --------- ISMA vs BA Sales (eixos duplos) ----------
-    # st.markdown("### ISMA evolution vs BA Sales")
+        
 
-    # fig_line_isma = go.Figure()
+    # --------- ISMA vs BA Sales (eixos duplos) ----------
+    st.markdown("### ISMA evolution vs BA Sales")
 
-    # fig_line_isma.add_trace(
-    #     go.Scatter(
-    #         x=df_country["Harvest Period"],
-    #         y=df_country["ISMA_FINAL"],
-    #         mode="lines+markers",
-    #         name="ISMA Final",
-    #         line=dict(color="#6ca86a", width=3),
-    #         marker=dict(size=8),
-    #         yaxis="y1"
-    #     )
-    # )
+    fig_line_isma = go.Figure()
 
-    # if sales_col is not None and df_country[sales_col].notna().any():
-    #     fig_line_isma.add_trace(
-    #         go.Scatter(
-    #             x=df_country["Harvest Period"],
-    #             y=df_country[sales_col],
-    #             mode="lines+markers",
-    #             name="BA Sales",
-    #             line=dict(color="#1f77b4", width=3),
-    #             marker=dict(size=7),
-    #             yaxis="y2"
-    #         )
-    #     )
+    fig_line_isma.add_trace(
+        go.Scatter(
+            x=df_country["Harvest Period"],
+            y=df_country["ISMA_FINAL"],
+            mode="lines+markers",
+            name="ISMA Final",
+            line=dict(color="#6ca86a", width=3),
+            marker=dict(size=8),
+            yaxis="y1"
+        )
+    )
 
-    # fig_line_isma.update_layout(
-    #     title=f"ISMA & BA Sales over time – {sel_country}",
-    #     xaxis=dict(title="Harvest Period"),
-    #     yaxis=dict(
-    #         title="ISMA Final",
-    #         side="left",
-    #         range=[0, 1],
-    #     ),
-    #     yaxis2=dict(
-    #         title="BA Sales",
-    #         overlaying="y",
-    #         side="right",
-    #         showgrid=False
-    #     ),
-    #     height=400,
-    #     legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
-    #     plot_bgcolor="white"
-    # )
+    if sales_col is not None and df_country[sales_col].notna().any():
+        fig_line_isma.add_trace(
+            go.Scatter(
+                x=df_country["Harvest Period"],
+                y=df_country[sales_col],
+                mode="lines+markers",
+                name="BA Sales",
+                line=dict(color="#1f77b4", width=3),
+                marker=dict(size=7),
+                yaxis="y2"
+            )
+        )
 
-    # st.plotly_chart(fig_line_isma, use_container_width=True, key="isma_line_country")
+    fig_line_isma.update_layout(
+        title=f"ISMA & BA Sales over time – {sel_country}",
+        xaxis=dict(title="Harvest Period"),
+        yaxis=dict(
+            title="ISMA Final",
+            side="left",
+            range=[0, 1],
+        ),
+        yaxis2=dict(
+            title="BA Sales",
+            overlaying="y",
+            side="right",
+            showgrid=False
+        ),
+        height=400,
+        legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
+        plot_bgcolor="white"
+    )
 
-    # st.markdown("### Detailed ISMA table")
-    # st.dataframe(
-    #     df_country[
-    #         [
-    #             "Harvest Period",
-    #             "Offer_PCA",
-    #             "Market_PCA",
-    #             "Climate_PCA",
-    #             "Economic_PCA",
-    #             "ISMA_PCA",
-    #             "ISMA_FINAL",
-    #         ]
-    #     ],
-    #     use_container_width=True,
-    #     height=350,
-    # )
+    st.plotly_chart(fig_line_isma, use_container_width=True, key="isma_line_country")
 
-    # render_status_card(last_update_main_str, last_update_isma_str)
-"""
+    st.markdown("### Detailed ISMA table")
+    st.dataframe(
+        df_country[
+            [
+                "Harvest Period",
+                "Offer_PC_  ",          
+                "Market_PCA",
+                "Climate_PCA",
+                "Economic_PCA",
+                "ISMA_FINAL",
+            ]
+            
+           ],
+    use_container_width=True,
+    height=350,
+)
+
+render_status_card(last_update_main_str, last_update_isma_str)
+
+
 # ----------------- Table Content -----------------
 if page == "Table Content":
     st.markdown("## 📋 Data Table")
