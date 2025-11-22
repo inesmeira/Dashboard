@@ -82,11 +82,7 @@ def apply_theme(name: str):
           background-attachment: fixed;
         }}
 
-        [data-testid="stToolbar"],
-        header[data-testid="stHeader"],
-        section.main > div:first-child {{
-          display:none !important; height:0 !important; visibility:hidden !important;
-        }}
+        /* ⚠️ REMOVEMOS O BLOCO QUE ESCONDIA O HEADER E O TOOLBAR */
 
         .block-container {{
           padding-top: 1rem !important;
