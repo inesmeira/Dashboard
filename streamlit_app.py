@@ -694,13 +694,9 @@ if page == "Home":
                 info = info_map.get(name)
                 tonnes_txt = (
                     f"{info['tonnes_total']:,.0f} t"
-                    if info is not None and pd.notna(info["tonnes_total"])
-                    else "Sem dados"
                 )
                 countries_txt = (
                     f"{int(info['n_countries'])} países"
-                    if info is not None and pd.notna(info["n_countries"])
-                    else "—"
                 )
 
                 clicked = st.button(name, key=f"tile_{name}", use_container_width=True)
