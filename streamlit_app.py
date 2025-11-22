@@ -676,37 +676,13 @@ if page == "Home":
     st.markdown("### Choose a subsegment")
     st.markdown('<div class="tiles">', unsafe_allow_html=True)
 
-    subs_info = (
-        df.groupby("subsegment", dropna=True)
-        .agg(
-            tonnes_total=("tonnes", "sum"),
-            n_countries=("country", "nunique"),
-        )
-        .reset_index()
-    )
-    info_map = {row["subsegment"]: row for _, row in subs_info.iterrows()}
-
+    # apenas criamos as linhas e os botões, sem textos adicionais
     rows = [SUBSEGMENTS[i: i + 3] for i in range(0, len(SUBSEGMENTS), 3)]
     for row in rows:
         cols = st.columns(3, gap="medium")
         for i, name in enumerate(row):
             with cols[i]:
-                info = info_map.get(name)
-                tonnes_txt = (
-                    f"{info['tonnes_total']:,.0f} t"
-                )
-                countries_txt = (
-                    f"{int(info['n_countries'])} países"
-                )
-
                 clicked = st.button(name, key=f"tile_{name}", use_container_width=True)
-
-                st.markdown(
-                    f"<div style='text-align:center;font-size:0.8rem;opacity:.8;'>"
-                    f"{tonnes_txt} • {countries_txt}"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
 
                 if clicked:
                     st.session_state["selected_subsegment"] = name
