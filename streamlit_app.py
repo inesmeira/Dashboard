@@ -22,17 +22,18 @@ st.set_page_config(
 if "nave_page" in st.session_state:
     del st.session_state["nave_page"]
 
-SUBSEGMENTS = [
-    "Preserves and Vegetables",
-    "Sauces",
-    "Sweet Spreades",
-    "Olive Oil",
-    "Mayonnaise",
-    "Spices",
-    "Yogurt and Desserts",
-    "Milk and Smoothies",
-    "Pate and Others",
-]
+SUBSEGMENTS = {
+    "Preserves and Vegetables": "🥫",
+    "Sauces": "🥫",
+    "Sweet Spreades": "🍯",
+    "Olive Oil": "🫒",
+    "Mayonnaise": "🥚",
+    "Spices": "🌶️",
+    "Yogurt and Desserts": "🍨",
+    "Milk and Smoothies": "🥛",
+    "Pate and Others": "🥪",
+}
+
 
 THEMES = {
     "Olive Oil": {"b1": "#a7d97d", "b2": "#d9edb3", "b3": "#edf5dc"},
@@ -672,17 +673,30 @@ default_ind = "C" if "C" in opts_ind else "(All)"
 if page == "Home":
     apply_theme("default")
 
+    # Page header
+    st.markdown("## 🍽️ Food Dashboard")
+    st.markdown(
+        "Select a **subsegment** to explore volumes, countries and trends "
+        "on the **Overview** page."
+    )
+
     st.write("")
     st.markdown("### Choose a subsegment")
+    st.caption(
+        "When you click, you will be redirected to the **Overview** page with that filter applied."
+    )
     st.markdown('<div class="tiles">', unsafe_allow_html=True)
 
-    # apenas criamos as linhas e os botões, sem textos adicionais
+    # Buttons only (with icons), no extra text below
     rows = [SUBSEGMENTS[i: i + 3] for i in range(0, len(SUBSEGMENTS), 3)]
     for row in rows:
-        cols = st.columns(3, gap="medium")
+        cols = st.columns(len(row), gap="medium")
         for i, name in enumerate(row):
+            icon = SUBSEGMENTS.get(name, "📊")
+            label = f"{icon}  {name}"
+
             with cols[i]:
-                clicked = st.button(name, key=f"tile_{name}", use_container_width=True)
+                clicked = st.button(label, key=f"tile_{name}", use_container_width=True)
 
                 if clicked:
                     st.session_state["selected_subsegment"] = name
