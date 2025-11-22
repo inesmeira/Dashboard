@@ -76,7 +76,7 @@ def apply_theme(name: str):
             var(--page-bg) 100%
           ) !important;
           background-attachment: fixed;
-        }};
+        }}
 
         [data-testid="stToolbar"],
         header[data-testid="stHeader"],
@@ -342,7 +342,6 @@ def load_supply(path: Path) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def load_isma(path: Path) -> pd.DataFrame:
-    # Sheet principal com índices
     df = pd.read_excel(path, sheet_name="ISMA_FINAL")
     df.columns = df.columns.astype(str).str.strip()
 
@@ -353,7 +352,6 @@ def load_isma(path: Path) -> pd.DataFrame:
                 df = df.rename(columns={c: "SalesBA"})
                 break
 
-    # Limpeza Country
     if "Country" in df.columns:
         df["Country"] = (
             df["Country"]
@@ -365,11 +363,9 @@ def load_isma(path: Path) -> pd.DataFrame:
         df["Country"] = df["Country"].replace({"nan": None, "None": None})
         df = df[df["Country"].notna()]
 
-    # Limpeza Harvest Period
     if "Harvest Period" in df.columns:
         df["Harvest Period"] = df["Harvest Period"].astype(str).str.strip()
 
-    # Converter colunas numéricas
     num_cols = [
         "Offer_PCA",
         "Market_PCA",
@@ -404,51 +400,6 @@ def load_isma(path: Path) -> pd.DataFrame:
                     .replace({"": None})
                 )
                 df[c] = pd.to_numeric(df[c], errors="coerce")
-
-    # --------- JUNTAR PRODUÇÃO DA SHEET Data4 ----------
-    # Espera-se colunas: Country, Harvest Period, Production
-    try:
-        df_prod = pd.read_excel(path, sheet_name="Data4")
-        df_prod.columns = df_prod.columns.astype(str).str.strip()
-
-        if "Country" in df_prod.columns:
-            df_prod["Country"] = (
-                df_prod["Country"]
-                .astype(str)
-                .str.strip()
-                .str.replace("\u00a0", " ", regex=False)
-                .str.replace(r"\s+", " ", regex=True)
-            )
-
-        if "Harvest Period" in df_prod.columns:
-            df_prod["Harvest Period"] = df_prod["Harvest Period"].astype(str).str.strip()
-
-        if "Production" in df_prod.columns:
-            df_prod["Production"] = (
-                df_prod["Production"]
-                .astype(str)
-                .str.replace("\u00a0", " ", regex=False)
-                .str.strip()
-                .str.replace(".", "", regex=False)   # milhares
-                .str.replace(",", ".", regex=False)  # vírgula decimal
-                .replace({"": None})
-            )
-            df_prod["Production"] = pd.to_numeric(df_prod["Production"], errors="coerce")
-
-        # Merge por Country + Harvest Period
-        if {"Country", "Harvest Period", "Production"}.issubset(df_prod.columns):
-            df = df.merge(
-                df_prod[["Country", "Harvest Period", "Production"]],
-                on=["Country", "Harvest Period"],
-                how="left",
-            )
-        else:
-            if "Production" not in df.columns:
-                df["Production"] = None
-    except Exception:
-        # Se algo falhar, garante coluna Production
-        if "Production" not in df.columns:
-            df["Production"] = None
 
     return df
 
@@ -971,6 +922,7 @@ if page == "Overview":
     st.markdown("### 🌍 Global Map by Tonnes")
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
+
     flt_map = flt.copy()
     if indicator == "(All)" and "C" in flt_map["indicator"].unique():
         flt_map = flt_map[flt_map["indicator"] == "C"]
@@ -1448,9 +1400,6 @@ elif page == "Index Detail":
             sales_col = c
             break
 
-    # Produção vem da coluna "Production" (merge com Data4)
-    production_col = "Production" if "Production" in df_country.columns and df_country["Production"].notna().any() else None
-
     if df_country.empty:
         st.info("No ISMA records for the selected country.")
         st.stop()
@@ -1472,11 +1421,11 @@ elif page == "Index Detail":
 
     row = df_point.iloc[0]
 
-    offer_val   = float(row["Offer_PCA"])    if pd.notna(row["Offer_PCA"])    else 0.0
-    market_val  = float(row["Market_PCA"])   if pd.notna(row["Market_PCA"])   else 0.0
-    climate_val = float(row["Climate_PCA"])  if pd.notna(row["Climate_PCA"])  else 0.0
+    offer_val   = float(row["Offer_PCA"])   if pd.notna(row["Offer_PCA"])   else 0.0
+    market_val  = float(row["Market_PCA"])  if pd.notna(row["Market_PCA"])  else 0.0
+    climate_val = float(row["Climate_PCA"]) if pd.notna(row["Climate_PCA"]) else 0.0
     eco_val     = float(row["Economic_PCA"]) if pd.notna(row["Economic_PCA"]) else 0.0
-    isma_val    = float(row["ISMA_FINAL"])   if pd.notna(row["ISMA_FINAL"])   else 0.0
+    isma_val    = float(row["ISMA_FINAL"])  if pd.notna(row["ISMA_FINAL"])  else 0.0
 
     c1, c2, c3, c4 = st.columns(4)
 
@@ -1548,7 +1497,7 @@ elif page == "Index Detail":
                         {"range": [0.75, 1.0], "color": "#81c784"},
                     ],
                 },
-            )
+            )       
         )
         gauge_fig.update_layout(
             height=320,
@@ -1561,10 +1510,7 @@ elif page == "Index Detail":
             use_container_width=True,
             key="isma_gauge_final",
         )
-    st.caption(
-        "Caption: < 0.35 = Low | 0.35-0.65 = Medium | > 0.65 = High",
-        unsafe_allow_html=True,
-    )
+    st.caption("Caption: < 0.35 = Low | 0.35-0.65 = Medium | > 0.65 = High", unsafe_allow_html=True)
 
     with col_g2:
         theta_labels = ["Offer", "Market", "Climate", "Economic"]
@@ -1609,12 +1555,11 @@ elif page == "Index Detail":
             key="isma_radar_subindices",
         )
 
-    # --------- ISMA vs BA Sales vs Production (eixo duplo) ----------
-    st.markdown("### ISMA evolution vs BA Sales & Production")
+    # --------- ISMA vs BA Sales (eixos duplos) ----------
+    st.markdown("### ISMA evolution vs BA Sales")
 
     fig_line_isma = go.Figure()
 
-    # ISMA Final (eixo esquerdo)
     fig_line_isma.add_trace(
         go.Scatter(
             x=df_country["Harvest Period"],
@@ -1623,11 +1568,10 @@ elif page == "Index Detail":
             name="ISMA Final",
             line=dict(color="#6ca86a", width=3),
             marker=dict(size=8),
-            yaxis="y1",
+            yaxis="y1"
         )
     )
 
-    # BA Sales (eixo direito)
     if sales_col is not None and df_country[sales_col].notna().any():
         fig_line_isma.add_trace(
             go.Scatter(
@@ -1637,26 +1581,12 @@ elif page == "Index Detail":
                 name="BA Sales",
                 line=dict(color="#1f77b4", width=3),
                 marker=dict(size=7),
-                yaxis="y2",
-            )
-        )
-
-    # Produção (eixo direito também)
-    if production_col is not None and df_country[production_col].notna().any():
-        fig_line_isma.add_trace(
-            go.Scatter(
-                x=df_country["Harvest Period"],
-                y=df_country[production_col],
-                mode="lines+markers",
-                name="Olive oil production",
-                line=dict(color="#ff7f0e", width=3),
-                marker=dict(size=7),
-                yaxis="y2",
+                yaxis="y2"
             )
         )
 
     fig_line_isma.update_layout(
-        title=f"ISMA, BA Sales & Production over time – {sel_country}",
+        title=f"ISMA & BA Sales over time – {sel_country}",
         xaxis=dict(title="Harvest Period"),
         yaxis=dict(
             title="ISMA Final",
@@ -1664,42 +1594,36 @@ elif page == "Index Detail":
             range=[0, 1],
         ),
         yaxis2=dict(
-            title="BA Sales / Production",
+            title="BA Sales",
             overlaying="y",
             side="right",
-            showgrid=False,
+            showgrid=False
         ),
         height=400,
         legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
-        plot_bgcolor="white",
+        plot_bgcolor="white"
     )
 
     st.plotly_chart(fig_line_isma, use_container_width=True, key="isma_line_country")
 
     st.markdown("### Detailed ISMA table")
-
-    cols_table = [
-        "Harvest Period",
-        "Offer_PCA",
-        "Market_PCA",
-        "Climate_PCA",
-        "Economic_PCA",
-        "ISMA_FINAL",
-    ]
-    if production_col is not None:
-        cols_table.append(production_col)
-    if sales_col is not None:
-        cols_table.append(sales_col)
-
     st.dataframe(
-        df_country[cols_table],
+        df_country[
+            [
+                "Harvest Period",
+                "Offer_PCA",
+                "Market_PCA",
+                "Climate_PCA",
+                "Economic_PCA",
+                "ISMA_PCA",
+                "ISMA_FINAL",
+            ]
+        ],
         use_container_width=True,
         height=350,
     )
 
     render_status_card(last_update_main_str, last_update_isma_str)
-
-
 
 # ----------------- Table Content -----------------
 if page == "Table Content":
