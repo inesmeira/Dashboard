@@ -150,7 +150,7 @@ def apply_theme(name: str):
         }}
         .tiles .stButton > button:hover {{
           transform: translateY(-4px);
-          box-shadow:0 12px 24px rgba(0,0,0,.12);
+          box-shadow:0 12px 24px rgba(0,0,0,0.12);
           background: var(--b3);
         }}
 
@@ -287,7 +287,13 @@ def build_rename_map(columns: list[str]) -> dict[str, str]:
             "epoca",
         ],
         "country": ["country", "member state", "memberstate", "pais", "estado membro"],
-        "product_type": ["product type", "producttype", "product", "tipo produto", "tipo de produto"],
+        "product_type": [
+            "product type",
+            "producttype",
+            "product",
+            "tipo produto",
+            "tipo de produto",
+        ],
         "indicator": ["indicator", "indicador"],
         "tonnes": [
             "tonnes",
@@ -317,22 +323,29 @@ def build_rename_map(columns: list[str]) -> dict[str, str]:
 
 @st.cache_data(show_spinner=False)
 def load_supply(path: Path) -> pd.DataFrame:
-    sheet = pick_sheet(path, ["Export", "Data", "TO+OO", "TO & OO", "Supply", "Sheet1"])
+    # usar primeiro Export (onde estão os dados corretos)
+    sheet = pick_sheet(path, ["Export", "Exports", "db", "Price", "Prices"])
     raw = pd.read_excel(path, sheet_name=sheet, dtype=str)
     df = raw.rename(columns=build_rename_map(list(raw.columns))).copy()
+
+    # garantir colunas padrão
     for col in ["harvest_period", "country", "product_type", "indicator", "tonnes"]:
         if col not in df.columns:
             df[col] = None
+
     for c in ["harvest_period", "country", "product_type", "indicator"]:
         df[c] = df[c].astype(str).str.strip()
+
+    # tratar toneladas: remover espaços e trocar vírgula por ponto
     df["tonnes"] = (
         df["tonnes"]
         .astype(str)
-        .str.replace("\u00a0", " ")
-        .str.replace(".", "", regex=False)
+        .str.replace("\u00a0", " ", regex=False)
+        .str.replace(" ", "", regex=False)
         .str.replace(",", ".", regex=False)
     )
     df["tonnes"] = pd.to_numeric(df["tonnes"], errors="coerce")
+
     df["harvest_year"] = df["harvest_period"].apply(season_to_year)
 
     map_seg = {"OO": "Olive Oil", "TO": "Olive Oil"}
@@ -342,10 +355,10 @@ def load_supply(path: Path) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def load_isma(path: Path) -> pd.DataFrame:
-    df = pd.read_excel(path, sheet_name="ISMA_FINAL")
+    sheet = pick_sheet(path, ["isma_final", "isma", "sheet1"])
+    df = pd.read_excel(path, sheet_name=sheet)
     df.columns = df.columns.astype(str).str.strip()
 
-    # Corrigir coluna SalesBA que pode vir como 'Unnamed: 9'
     if "SalesBA" not in df.columns:
         for c in df.columns:
             if c.startswith("Unnamed") and df[c].notna().sum() > 0:
@@ -380,14 +393,13 @@ def load_isma(path: Path) -> pd.DataFrame:
     for c in num_cols:
         if c in df.columns:
             if c == "SalesBA":
-                # tratar milhares + vírgula decimal
                 df[c] = (
                     df[c]
                     .astype(str)
                     .str.replace("\u00a0", " ", regex=False)
                     .str.strip()
-                    .str.replace(".", "", regex=False)   # remove separador de milhares
-                    .str.replace(",", ".", regex=False)  # vírgula -> ponto
+                    .str.replace(".", "", regex=False)
+                    .str.replace(",", ".", regex=False)
                     .replace({"": None})
                 )
                 df[c] = pd.to_numeric(df[c], errors="coerce")
@@ -417,7 +429,9 @@ def calculate_growth(flt: pd.DataFrame) -> tuple[float, str]:
     return growth, trend
 
 
-def create_line_chart(data: pd.DataFrame, x: str, y: str, title: str, color: str = None):
+def create_line_chart(
+    data: pd.DataFrame, x: str, y: str, title: str, color: str = None
+):
     if data.empty:
         return None
     fig = go.Figure()
@@ -561,13 +575,10 @@ if not EXCEL_PATH.exists():
 
 with st.spinner("A carregar dados..."):
     df = load_supply(EXCEL_PATH)
-    df["tonnes"] = df["tonnes"] * 1000
     if not ISMA_PATH.exists():
         st.error(f"Ficheiro ISMA não encontrado: {ISMA_PATH.resolve()}")
         st.stop()
-
     isma = load_isma(ISMA_PATH)
-    valid_isma = isma[isma["ISMA_FINAL"].notna() & isma["Harvest Period"].notna()].copy()
 
 _last_dt_main = get_last_update_dt(EXCEL_PATH)
 _last_dt_isma = get_last_update_dt(ISMA_PATH) if ISMA_PATH.exists() else None
@@ -659,7 +670,7 @@ if page == "Home":
     st.markdown("## Choose a subsegment")
     st.markdown('<div class="tiles">', unsafe_allow_html=True)
 
-    rows = [SUBSEGMENTS[i: i + 3] for i in range(0, len(SUBSEGMENTS), 3)]
+    rows = [SUBSEGMENTS[i : i + 3] for i in range(0, len(SUBSEGMENTS), 3)]
     for row in rows:
         cols = st.columns(3, gap="medium")
         for i, name in enumerate(row):
@@ -675,7 +686,9 @@ if page == "Home":
 
 # ----------------- FILTROS TOPO -----------------
 st.markdown('<div class="filters-card">', unsafe_allow_html=True)
-st.caption("💡 In any filter, click on the box and start typing to search for values faster")
+st.caption(
+    "💡 In any filter, click on the box and start typing to search for values faster"
+)
 
 if page == "Index Detail":
     c1, _ = st.columns([1.4, 3])
@@ -798,31 +811,71 @@ if page == "Overview":
 
     st.write("")
 
+    # -------- GRÁFICO ÚNICO: TONNES x HARVEST PERIOD x INDICATOR --------
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    by_year = (
-        flt.groupby("harvest_year", dropna=True)["tonnes"]
+
+    # aplicar os mesmos filtros, mas SEM o filtro de indicator
+    flt_chart = df.copy()
+    if subsegment != "(All)":
+        flt_chart = flt_chart[flt_chart["subsegment"] == subsegment]
+    if product_type != "(All)":
+        flt_chart = flt_chart[flt_chart["product_type"] == product_type]
+    if country != "(All)":
+        flt_chart = flt_chart[flt_chart["country"] == country]
+    if harvest != "(All)":
+        flt_chart = flt_chart[flt_chart["harvest_period"] == harvest]
+
+    flt_chart = drop_aggregate_countries(flt_chart, "country")
+
+    by_hp = (
+        flt_chart.groupby(["harvest_period", "indicator"], dropna=True)["tonnes"]
         .sum()
         .reset_index()
-        .sort_values("harvest_year")
     )
 
-    if not by_year.empty:
-        fig_line = create_line_chart(
-            by_year,
-            "harvest_year",
-            "tonnes",
-            "Tonnes Evolution by Year",
-            "#2f5e1b",
+    if not by_hp.empty:
+        by_hp["sort_year"] = by_hp["harvest_period"].apply(season_to_year)
+        by_hp = by_hp.sort_values(["sort_year", "harvest_period", "indicator"])
+        ordered_periods = list(dict.fromkeys(by_hp["harvest_period"]))
+
+        fig = px.area(
+            by_hp,
+            x="harvest_period",
+            y="tonnes",
+            color="indicator",
+            line_group="indicator",
+            markers=True,
+            title="Tonnes por Harvest period e Indicator",
         )
-        fig_line.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)",
+
+        fig.update_traces(
+            mode="lines+markers",
+            texttemplate="%{y:.0f}",
+            textposition="top center",
+        )
+
+        fig.update_layout(
+            xaxis_title="Harvest period",
+            yaxis_title="Tonnes",
+            hovermode="x unified",
             plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            height=430,
+            legend_title_text="Indicator",
         )
-        st.plotly_chart(fig_line, use_container_width=True)
+
+        fig.update_xaxes(
+            categoryorder="array",
+            categoryarray=ordered_periods,
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Sem dados para os filtros atuais.")
+
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # -------- Top 15 + Distribuição --------
     flt_country = flt.copy()
     if indicator == "(All)" and "C" in df["indicator"].unique():
         flt_country = flt_country[flt_country["indicator"] == "C"]
@@ -877,7 +930,7 @@ if page == "Overview":
                     yanchor="bottom",
                     y=1.02,
                     xanchor="right",
-                    x=1
+                    x=1,
                 ),
             )
 
@@ -904,9 +957,9 @@ if page == "Overview":
             dist = dist.sort_values("Share %", ascending=False)
 
             styler = (
-                dist.style
-                .apply(style_share_column, subset=["Share %"])
-                .format({"Tonnes": "{:,.0f}", "Share %": "{:.1f}%"})
+                dist.style.apply(style_share_column, subset=["Share %"]).format(
+                    {"Tonnes": "{:,.0f}", "Share %": "{:.1f}%"}
+                )
             )
 
             st.dataframe(
@@ -919,9 +972,9 @@ if page == "Overview":
             st.info("Sem dados.")
         st.markdown("</div>", unsafe_allow_html=True)
 
+    # -------- Mapa --------
     st.markdown("### 🌍 Global Map by Tonnes")
     st.markdown('<div class="card">', unsafe_allow_html=True)
-
 
     flt_map = flt.copy()
     if indicator == "(All)" and "C" in flt_map["indicator"].unique():
@@ -999,6 +1052,7 @@ if page == "Overview":
         st.plotly_chart(fig_map, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
+    # -------- resto do Overview (tabs, heatmap, etc.) --------
     st.markdown("## Advanced Analytics")
 
     tab1, tab2, tab3 = st.tabs(["📈 Trends", "🗺️ Geographic", "📊 Comparisons"])
@@ -1039,9 +1093,7 @@ if page == "Overview":
 
             with col2:
                 st.dataframe(
-                    by_year[
-                        ["harvest_year", "tonnes", "yoy_change"]
-                    ].rename(
+                    by_year[["harvest_year", "tonnes", "yoy_change"]].rename(
                         columns={
                             "harvest_year": "Year",
                             "tonnes": "Tonnes",
@@ -1058,11 +1110,7 @@ if page == "Overview":
     with tab2:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.subheader("Top 10 Countries Ranking")
-        flt_geo = (
-            flt[flt["indicator"] == "C"]
-            if "C" in flt["indicator"].unique()
-            else flt
-        )
+        flt_geo = flt[flt["indicator"] == "C"] if "C" in flt["indicator"].unique() else flt
         flt_geo = drop_aggregate_countries(flt_geo, "country")
         by_country_geo = (
             flt_geo.groupby("country", dropna=True)["tonnes"]
@@ -1119,10 +1167,7 @@ if page == "Overview":
                 )
 
                 top_countries = (
-                    by_year_country.groupby("country")["tonnes"]
-                    .sum()
-                    .nlargest(5)
-                    .index
+                    by_year_country.groupby("country")["tonnes"].sum().nlargest(5).index
                 )
                 plot_data = by_year_country[
                     by_year_country["country"].isin(top_countries)
@@ -1154,70 +1199,68 @@ if page == "Overview":
     with st.expander("Heatmap filters", True):
         c1_h, c2_h, c3_h, c4_h = st.columns([1.2, 1, 1, 1.4])
 
-    years_series = pd.to_numeric(
-        flt["harvest_year"], errors="coerce"
-    ).dropna()
+        years_series = pd.to_numeric(flt["harvest_year"], errors="coerce").dropna()
 
-    if years_series.empty:
-        st.info("Sem anos disponíveis para o heatmap.")
-        heat_data = pd.DataFrame()
-    else:
-        yr_min = int(years_series.min())
-        yr_max = int(years_series.max())
-        year_range = c1_h.slider(
-            "Year range",
-            yr_min,
-            yr_max,
-            (max(yr_min, yr_max - 10), yr_max),
-        )
-        only_c = c2_h.checkbox(
-            "Only indicator C (Consumption)",
-            value=("C" in flt["indicator"].unique()),
-        )
-        exclude_aggr = c3_h.checkbox(
-            "Exclude aggregates (EU, World…)", value=True
-        )
-
-        metric_mode = c4_h.radio(
-            "Metric",
-            ["Tonnes", "Share of year total (%)"],
-            horizontal=True,
-            index=0,
-        )
-
-        flt_heat = flt.copy()
-        if only_c and "C" in flt_heat["indicator"].unique():
-            flt_heat = flt_heat[flt_heat["indicator"] == "C"]
-
-        flt_heat = flt_heat[
-            pd.to_numeric(flt_heat["harvest_year"], errors="coerce").between(
-                year_range[0], year_range[1]
+        if years_series.empty:
+            st.info("Sem anos disponíveis para o heatmap.")
+            heat_data = pd.DataFrame()
+        else:
+            yr_min = int(years_series.min())
+            yr_max = int(years_series.max())
+            year_range = c1_h.slider(
+                "Year range",
+                yr_min,
+                yr_max,
+                (max(yr_min, yr_max - 10), yr_max),
             )
-        ]
+            only_c = c2_h.checkbox(
+                "Only indicator C (Consumption)",
+                value=("C" in flt["indicator"].unique()),
+            )
+            exclude_aggr = c3_h.checkbox(
+                "Exclude aggregates (EU, World…)", value=True
+            )
 
-        if exclude_aggr:
-            flt_heat = drop_aggregate_countries(flt_heat, "country")
+            metric_mode = c4_h.radio(
+                "Metric",
+                ["Tonnes", "Share of year total (%)"],
+                horizontal=True,
+                index=0,
+            )
 
-        by_ct = (
-            flt_heat.groupby("country", dropna=True)["tonnes"]
-            .sum()
-            .sort_values(ascending=False)
-        )
-        default_countries = by_ct.head(15).index.tolist()
-        all_countries = sorted(
-            [c for c in flt_heat["country"].dropna().unique() if str(c).strip()]
-        )
+            flt_heat = flt.copy()
+            if only_c and "C" in flt_heat["indicator"].unique():
+                flt_heat = flt_heat[flt_heat["indicator"] == "C"]
 
-        selected_countries = st.multiselect(
-            "Countries",
-            all_countries,
-            default=default_countries,
-            placeholder="Choose countries to show…",
-        )
+            flt_heat = flt_heat[
+                pd.to_numeric(flt_heat["harvest_year"], errors="coerce").between(
+                    year_range[0], year_range[1]
+                )
+            ]
 
-        heat_data = flt_heat.copy()
-        if selected_countries:
-            heat_data = heat_data[heat_data["country"].isin(selected_countries)]
+            if exclude_aggr:
+                flt_heat = drop_aggregate_countries(flt_heat, "country")
+
+            by_ct = (
+                flt_heat.groupby("country", dropna=True)["tonnes"]
+                .sum()
+                .sort_values(ascending=False)
+            )
+            default_countries = by_ct.head(15).index.tolist()
+            all_countries = sorted(
+                [c for c in flt_heat["country"].dropna().unique() if str(c).strip()]
+            )
+
+            selected_countries = st.multiselect(
+                "Countries",
+                all_countries,
+                default=default_countries,
+                placeholder="Choose countries to show…",
+            )
+
+            heat_data = flt_heat.copy()
+            if selected_countries:
+                heat_data = heat_data[heat_data["country"].isin(selected_countries)]
 
     if heat_data.empty:
         st.info("Dados insuficientes para heatmap.")
@@ -1229,7 +1272,9 @@ if page == "Overview":
         )
 
         if metric_mode == "Share of year total (%)":
-            total_by_year = by_ct_year.groupby("harvest_year")["tonnes"].transform("sum")
+            total_by_year = by_ct_year.groupby("harvest_year")["tonnes"].transform(
+                "sum"
+            )
             by_ct_year["value"] = (by_ct_year["tonnes"] / total_by_year) * 100
             colorbar_title = "% of year total"
             value_fmt = lambda v: f"{v:.1f}%" if pd.notna(v) else ""
@@ -1308,12 +1353,7 @@ elif page == "Index Detail":
         st.warning("⚠️ No ISMA data available.")
         st.stop()
 
-    all_countries_raw = (
-        isma["Country"]
-        .dropna()
-        .astype(str)
-        .str.strip()
-    )
+    all_countries_raw = isma["Country"].dropna().astype(str).str.strip()
 
     def looks_like_country(x: str) -> bool:
         x_clean = x.replace(" ", "")
@@ -1341,19 +1381,10 @@ elif page == "Index Detail":
     isma_sorted = isma[isma["Country"].isin(countries_isma)].copy()
     isma_sorted = isma_sorted.sort_values(["Country", "Harvest Period"])
 
-    latest_rows = (
-        isma_sorted
-        .groupby("Country", as_index=False)
-        .tail(1)
-    )
-
+    latest_rows = isma_sorted.groupby("Country", as_index=False).tail(1)
     latest_rows = latest_rows.dropna(subset=["ISMA_FINAL"])
 
-    top_isma = (
-        latest_rows
-        .sort_values("ISMA_FINAL", ascending=False)
-        .head(10)
-    )
+    top_isma = latest_rows.sort_values("ISMA_FINAL", ascending=False).head(10)
 
     if not top_isma.empty:
         fig_rank_isma = px.bar(
@@ -1388,12 +1419,9 @@ elif page == "Index Detail":
         )
 
     df_country = (
-        isma[isma["Country"] == sel_country]
-        .copy()
-        .sort_values("Harvest Period")
+        isma[isma["Country"] == sel_country].copy().sort_values("Harvest Period")
     )
 
-    # DETETAR A COLUNA DE SALES (SalesBA)
     sales_col = None
     for c in df_country.columns:
         if c.lower().replace(" ", "").replace("_", "") == "salesba":
@@ -1421,11 +1449,11 @@ elif page == "Index Detail":
 
     row = df_point.iloc[0]
 
-    offer_val   = float(row["Offer_PCA"])   if pd.notna(row["Offer_PCA"])   else 0.0
-    market_val  = float(row["Market_PCA"])  if pd.notna(row["Market_PCA"])  else 0.0
+    offer_val = float(row["Offer_PCA"]) if pd.notna(row["Offer_PCA"]) else 0.0
+    market_val = float(row["Market_PCA"]) if pd.notna(row["Market_PCA"]) else 0.0
     climate_val = float(row["Climate_PCA"]) if pd.notna(row["Climate_PCA"]) else 0.0
-    eco_val     = float(row["Economic_PCA"]) if pd.notna(row["Economic_PCA"]) else 0.0
-    isma_val    = float(row["ISMA_FINAL"])  if pd.notna(row["ISMA_FINAL"])  else 0.0
+    eco_val = float(row["Economic_PCA"]) if pd.notna(row["Economic_PCA"]) else 0.0
+    isma_val = float(row["ISMA_FINAL"]) if pd.notna(row["ISMA_FINAL"]) else 0.0
 
     c1, c2, c3, c4 = st.columns(4)
 
@@ -1497,7 +1525,7 @@ elif page == "Index Detail":
                         {"range": [0.75, 1.0], "color": "#81c784"},
                     ],
                 },
-            )       
+            )
         )
         gauge_fig.update_layout(
             height=320,
@@ -1510,7 +1538,7 @@ elif page == "Index Detail":
             use_container_width=True,
             key="isma_gauge_final",
         )
-    st.caption("Caption: < 0.35 = Low | 0.35-0.65 = Medium | > 0.65 = High", unsafe_allow_html=True)
+    st.caption("Caption: < 0.35 = Low | 0.35-0.65 = Medium | > 0.65 = High")
 
     with col_g2:
         theta_labels = ["Offer", "Market", "Climate", "Economic"]
@@ -1555,7 +1583,6 @@ elif page == "Index Detail":
             key="isma_radar_subindices",
         )
 
-    # --------- ISMA vs BA Sales (eixos duplos) ----------
     st.markdown("### ISMA evolution vs BA Sales")
 
     fig_line_isma = go.Figure()
@@ -1568,7 +1595,7 @@ elif page == "Index Detail":
             name="ISMA Final",
             line=dict(color="#6ca86a", width=3),
             marker=dict(size=8),
-            yaxis="y1"
+            yaxis="y1",
         )
     )
 
@@ -1581,7 +1608,7 @@ elif page == "Index Detail":
                 name="BA Sales",
                 line=dict(color="#1f77b4", width=3),
                 marker=dict(size=7),
-                yaxis="y2"
+                yaxis="y2",
             )
         )
 
@@ -1597,11 +1624,11 @@ elif page == "Index Detail":
             title="BA Sales",
             overlaying="y",
             side="right",
-            showgrid=False
+            showgrid=False,
         ),
         height=400,
         legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
-        plot_bgcolor="white"
+        plot_bgcolor="white",
     )
 
     st.plotly_chart(fig_line_isma, use_container_width=True, key="isma_line_country")
@@ -1624,6 +1651,7 @@ elif page == "Index Detail":
     )
 
     render_status_card(last_update_main_str, last_update_isma_str)
+
 
 # ----------------- Table Content -----------------
 if page == "Table Content":
