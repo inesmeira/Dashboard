@@ -18,11 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# limpar chaves antigas de navegação, se existirem
-for k in ("nav_page", "nave_page"):
-    if k in st.session_state:
-        del st.session_state[k]
-
 SUBSEGMENTS = [
     "Preserves and Vegetables",
     "Sauces",
@@ -328,10 +323,12 @@ def build_rename_map(columns: list[str]) -> dict[str, str]:
 
 @st.cache_data(show_spinner=False)
 def load_supply(path: Path) -> pd.DataFrame:
+    # usar primeiro Export (onde estão os dados corretos)
     sheet = pick_sheet(path, ["Export", "Exports", "db", "Price", "Prices"])
     raw = pd.read_excel(path, sheet_name=sheet, dtype=str)
     df = raw.rename(columns=build_rename_map(list(raw.columns))).copy()
 
+    # garantir colunas padrão
     for col in ["harvest_period", "country", "product_type", "indicator", "tonnes"]:
         if col not in df.columns:
             df[col] = None
@@ -339,6 +336,7 @@ def load_supply(path: Path) -> pd.DataFrame:
     for c in ["harvest_period", "country", "product_type", "indicator"]:
         df[c] = df[c].astype(str).str.strip()
 
+    # tratar toneladas: remover espaços e trocar vírgula por ponto
     df["tonnes"] = (
         df["tonnes"]
         .astype(str)
@@ -1174,8 +1172,7 @@ if page == "Overview":
                         x=by_year["harvest_year"],
                         y=by_year["yoy_change"],
                         marker_color=[
-                            "red" if x < 0 else "green"
-                            for x in by_year["yoy_change"]
+                            "red" if x < 0 else "green" for x in by_year["yoy_change"]
                         ],
                         name="YoY Change %",
                     )
