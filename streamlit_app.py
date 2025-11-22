@@ -95,9 +95,6 @@ def apply_theme(name: str):
           background: var(--sidebar-bg) !important;
           border-right: 1px solid var(--sidebar-border);
         }}
-        [data-testid="collapsedControl"],
-        button[title="Hide sidebar"],
-        button[title="Show sidebar"] {{ display:none !important; }}
 
         .sb-brand {{ display:flex; align-items:center; gap:.6rem; padding:.9rem .8rem .3rem .8rem; }}
         .sb-title {{ font-weight:700; color:#244c1a; font-size:1.05rem; }}
@@ -129,10 +126,6 @@ def apply_theme(name: str):
         .metric-label {{ font-size:.9rem; opacity:.85; color:#223; margin-bottom:4px; }}
         .metric-value {{ font-size:1.7rem; font-weight:800; color:#223; }}
         .metric-delta {{ font-size:.85rem; margin-top:4px; font-weight:600; }}
-        .metric-delta.positive {{ color:#2e7d32; }}
-        .metric-delta.negative {{ color:#c62828; }}
-
-        thead th {{ background: var(--b1) !important; color:#fff !important; }}
 
         .tiles .stButton > button {{
           width: 100%;
@@ -153,85 +146,11 @@ def apply_theme(name: str):
           box-shadow:0 12px 24px rgba(0,0,0,0.12);
           background: var(--b3);
         }}
-
-        div[data-testid="stSelectbox"] > div:nth-child(2) {{
-          border: 1px solid #c3cadb;
-          border-radius: 10px;
-          background: #ffffff;
-          padding: 2px 6px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-        }}
-        div[data-testid="stSelectbox"] > div:nth-child(2):hover {{
-          box-shadow: 0 3px 8px rgba(0,0,0,0.06);
-          border-color: #9aa6c4;
-        }}
-
-        div[data-testid="stSelectbox"] label {{
-          font-weight: 600;
-          font-size: 0.86rem;
-          color: #24324a;
-        }}
-
-        button[kind="secondary"] {{
-          padding: 0.15rem 0.4rem !important;
-          font-size: 0.8rem !important;
-        }}
-
-        div[data-testid="column"] {{
-          padding-left: 0.8rem !important;
-          padding-right: 0.8rem !important;
-        }}
-
-        .footer-info {{
-          position: fixed;
-          bottom: 10px;
-          left: 10px;
-          background: rgba(255, 255, 255, 0.96);
-          padding: 8px 14px;
-          border-radius: 8px;
-          font-size: 0.75rem;
-          color: #666;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-          z-index: 999;
-          border: 1px solid var(--card-border);
-        }}
-        .footer-info div {{ margin: 2px 0; }}
-
-        section[data-testid="stSidebar"] div[role="radiogroup"] label {{
-          font-size: 1.10rem;
-          padding: 10px 12px;
-          border-radius: 10px;
-          margin-bottom: 6px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }}
-        section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
-          background: rgba(0,0,0,.04);
-        }}
-        section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] {{
-          transform: scale(1.2);
-        }}
-        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){{
-          background: rgba(138, 180, 248, 0.18);
-          font-weight: 700;
-          border: 1px solid var(--card-border);
-        }}
-
-        .sb-lastupdate {{
-          font-size: .85rem;
-          color: #244c1a;
-          background: #fff;
-          border: 1px solid var(--card-border);
-          padding: 8px 10px;
-          border-radius: 8px;
-          margin: 8px 10px 12px 8px;
-          display: inline-block;
-        }}      
         </style>
         """,
         unsafe_allow_html=True,
     )
+
 
 
 def _norm_sheet(s: str) -> str:
