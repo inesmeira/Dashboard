@@ -672,52 +672,8 @@ default_ind = "C" if "C" in opts_ind else "(All)"
 if page == "Home":
     apply_theme("default")
 
-    st.markdown("## 🍽️ Food Dashboard")
-    st.markdown(
-        "Selecione um **subsegmento** para explorar volumes, países e tendências "
-        "na página de **Overview**."
-    )
     st.write("")
-
-    total_tonnes_all = float(df["tonnes"].sum(skipna=True))
-    n_countries_all = df["country"].nunique()
-    n_years_all = df["harvest_year"].nunique()
-
-    k1, k2, k3 = st.columns(3)
-    with k1:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">Total Tonnes (todas as categorias)</div>
-                <div class="metric-value">{total_tonnes_all:,.0f} t</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with k2:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">Países com dados</div>
-                <div class="metric-value">{n_countries_all}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with k3:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">Campanhas de colheita</div>
-                <div class="metric-value">{n_years_all}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.write("")
-    st.markdown("### Escolha um subsegmento")
-    st.caption("Ao clicar, será redirecionado para a página **Overview** com esse filtro aplicado.")
+    st.markdown("### Choose a subsegment")
     st.markdown('<div class="tiles">', unsafe_allow_html=True)
 
     subs_info = (
