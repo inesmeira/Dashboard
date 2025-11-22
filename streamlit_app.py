@@ -22,7 +22,19 @@ st.set_page_config(
 if "nave_page" in st.session_state:
     del st.session_state["nave_page"]
 
-SUBSEGMENTS = {
+SUBSEGMENTS = [
+    "Preserves and Vegetables",
+    "Sauces",
+    "Sweet Spreades",
+    "Olive Oil",
+    "Mayonnaise",
+    "Spices",
+    "Yogurt and Desserts",
+    "Milk and Smoothies",
+    "Pate and Others",
+]
+
+SUBSEGMENT_ICONS = {
     "Preserves and Vegetables": "🥫",
     "Sauces": "🥫",
     "Sweet Spreades": "🍯",
@@ -692,7 +704,7 @@ if page == "Home":
     for row in rows:
         cols = st.columns(len(row), gap="medium")
         for i, name in enumerate(row):
-            icon = SUBSEGMENTS.get(name, "📊")
+            icon = SUBSEGMENT_ICONS.get(name, "📊")
             label = f"{icon}  {name}"
 
             with cols[i]:
@@ -709,6 +721,7 @@ if page == "Home":
 
     st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
+
 
 
 # ----------------- FILTROS TOPO -----------------
