@@ -822,189 +822,120 @@ if indicator != "(All)":
 
 
 # ----------------- OVERVIEW -----------------
+# ----------------- OVERVIEW -----------------
 if page == "Overview":
-    st.markdown("### Overview Dashboard")
+    st.markdown("## Overview dashboard")
 
     if flt.empty:
         st.info("No data available for the selected subsegment / filters.")
         st.stop()
 
-    growth, trend = calculate_growth(flt)
+    # usar sempre dados sem agregados para KPIs (EU, World, Total… fora)
+    flt_base = drop_aggregate_countries(flt.copy(), "country")
 
-    # Exclude aggregates to count "real" countries
-    flt_non_agg = drop_aggregate_countries(flt, "country")
+    # --- KPI 1: total volume ---
+    total_tonnes = float(flt_base["tonnes"].sum(skipna=True))
 
-    total_tonnes = float(flt["tonnes"].sum())
-    n_countries = flt_non_agg["country"].nunique()
-    years_series = pd.to_numeric(flt["harvest_year"], errors="coerce").dropna()
-    n_years = years_series.nunique()
-    if not years_series.empty:
-        year_min = int(years_series.min())
-        year_max = int(years_series.max())
-        year_range_txt = f"{year_min} – {year_max}" if year_min != year_max else f"{year_max}"
+    # --- KPI 2: nº de países com dados ---
+    n_countries = flt_base["country"].nunique()
+
+    # --- KPI 3: país com maior volume + % ---
+    by_country_kpi = (
+        flt_base.groupby("country", dropna=True)["tonnes"]
+        .sum()
+        .reset_index()
+        .sort_values("tonnes", ascending=False)
+    )
+
+    if not by_country_kpi.empty:
+        top_row = by_country_kpi.iloc[0]
+        top_country = str(top_row["country"])
+        total_for_share = by_country_kpi["tonnes"].sum()
+        top_share = (
+            float(top_row["tonnes"]) / total_for_share * 100
+            if total_for_share > 0
+            else 0.0
+        )
     else:
-        year_range_txt = "—"
+        top_country = "—"
+        top_share = 0.0
 
+    # --- KPI 4: YoY growth (último ano) ---
+    growth, trend = calculate_growth(flt_base)
     delta_class = "positive" if growth > 0 else "negative" if growth < 0 else ""
     arrow = "↑" if growth > 0 else "↓" if growth < 0 else "→"
+    growth_caption = (
+        f"{arrow} vs previous harvest"
+        if growth != 0
+        else "Same as previous harvest"
+    )
 
-    st.markdown("#### Key metrics for current selection")
+    # ------ LAYOUT DOS CARDS (4 numa linha) ------
     k1, k2, k3, k4 = st.columns(4)
 
+    # KPI 1 – total volume
     with k1:
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">📦 Total volume (tonnes)</div>
                 <div class="metric-value">{total_tonnes:,.0f} t</div>
-                <div class="metric-delta">All filters applied</div>
+                <div class="metric-delta" style="color:#2e7d32;">
+                    All filters applied
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+    # KPI 2 – countries with data
     with k2:
         st.markdown(
             f"""
             <div class="metric-card">
                 <div class="metric-label">🌍 Countries with data</div>
                 <div class="metric-value">{n_countries}</div>
-                <div class="metric-delta">Excluding EU / World / totals</div>
+                <div class="metric-delta" style="color:#555;">
+                    Excluding EU / World / global totals
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+    # KPI 3 – top producing country
     with k3:
+        share_text = f"{top_share:.1f}%" if top_country != "—" else "No data"
         st.markdown(
             f"""
             <div class="metric-card">
-                <div class="metric-label">📅 Harvest years covered</div>
-                <div class="metric-value">{n_years}</div>
-                <div class="metric-delta">Range: {year_range_txt}</div>
+                <div class="metric-label">🥇 Top producing country</div>
+                <div class="metric-value">{top_country}</div>
+                <div class="metric-delta" style="color:#555;">
+                    {share_text} of selection volume
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+    # KPI 4 – YoY growth (último ano)
     with k4:
+        color = "#2e7d32" if growth > 0 else "#c62828" if growth < 0 else "#555555"
         st.markdown(
             f"""
             <div class="metric-card">
-                <div class="metric-label">📈 YoY growth (latest year)</div>
+                <div class="metric-label">📉 YoY growth (latest year)</div>
                 <div class="metric-value">{growth:+.1f}%</div>
-                <div class="metric-delta {delta_class}">{arrow} vs previous harvest</div>
+                <div class="metric-delta {delta_class}" style="color:{color};">
+                    {growth_caption}
+                </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
     st.write("")
-
-    # ---- Regional & global aggregates (EU, World, Total, etc.) ----
-    agg_mask = is_aggregate_country_series(flt["country"])
-    agg_rows = flt[agg_mask].copy()
-
-    st.markdown("### Regional & global aggregates")
-
-    if agg_rows.empty:
-        st.caption(
-            "No regional / global aggregates (EU, World, Total, etc.) "
-            "available for the current filter selection."
-        )
-    else:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-
-        by_agg = (
-            agg_rows.groupby("country", dropna=True)["tonnes"]
-            .sum()
-            .reset_index()
-            .sort_values("tonnes", ascending=False)
-        )
-
-        total_selection_tonnes = float(flt["tonnes"].sum())
-        if total_selection_tonnes > 0:
-            by_agg["Share of selection %"] = (
-                by_agg["tonnes"] / total_selection_tonnes * 100
-            )
-        else:
-            by_agg["Share of selection %"] = 0.0
-
-        # Try to identify a "World" row if it exists
-        by_agg["country_lower"] = by_agg["country"].astype(str).str.strip().str.lower()
-        world_mask = by_agg["country_lower"].eq("world")
-        world_tonnes = float(by_agg.loc[world_mask, "tonnes"].sum()) if world_mask.any() else total_selection_tonnes
-
-        n_aggregates = len(by_agg)
-        top_region = by_agg.iloc[0]["country"]
-        top_region_share = float(by_agg.iloc[0]["Share of selection %"])
-
-        c1a, c2a, c3a = st.columns(3)
-
-        with c1a:
-            st.markdown(
-                f"""
-                <div class="metric-card">
-                    <div class="metric-label">🌐 Aggregated regions / totals</div>
-                    <div class="metric-value">{n_aggregates}</div>
-                    <div class="metric-delta">EU, World, Total, etc.</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        with c2a:
-            st.markdown(
-                f"""
-                <div class="metric-card">
-                    <div class="metric-label">🌍 World / total volume*</div>
-                    <div class="metric-value">{world_tonnes:,.0f} t</div>
-                    <div class="metric-delta">
-                        *If 'World' row exists, it is used. Otherwise, the current selection total is shown.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        with c3a:
-            st.markdown(
-                f"""
-                <div class="metric-card">
-                    <div class="metric-label">🏅 Largest region in selection</div>
-                    <div class="metric-value">{top_region}</div>
-                    <div class="metric-delta">
-                        {top_region_share:.1f}% of selection volume
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        st.write("")
-        st.markdown("#### Regional / global breakdown")
-
-        display_agg = by_agg.drop(columns=["country_lower"]).rename(
-            columns={
-                "country": "Region / total",
-                "tonnes": "Tonnes",
-                "Share of selection %": "Share of selection (%)",
-            }
-        )
-
-        st.dataframe(
-            display_agg.style.format(
-                {
-                    "Tonnes": "{:,.0f}",
-                    "Share of selection (%)": "{:.1f}%",
-                }
-            ),
-            use_container_width=True,
-            height=320,
-        )
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
 
     # -------- GRÁFICO ÚNICO: TONNES x HARVEST PERIOD x INDICATOR --------
     st.markdown('<div class="card">', unsafe_allow_html=True)
