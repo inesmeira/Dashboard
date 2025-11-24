@@ -2013,11 +2013,11 @@ elif page == "Index Detail":
             title=dict(text="Production", standoff=10),
             overlaying="y",
             side="right",
-            position=0.88,       # ENTRE 0 e 1, afastado do y2  
+            position=0.88,       
             showgrid=False,
             tickformat=".0s",
         ),
-        
+
 
         height=450,
         legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
