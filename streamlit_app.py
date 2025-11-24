@@ -2013,7 +2013,7 @@ elif page == "Index Detail":
             title=dict(text="Production", standoff=10),
             overlaying="y",
             side="right",
-            position=0.88,       # ENTRE 0 e 1, afastado do y2
+            position=0.88,       # ENTRE 0 e 1, afastado do y2  
             showgrid=False,
             tickformat=".0s",
         ),
