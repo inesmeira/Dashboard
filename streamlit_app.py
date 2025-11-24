@@ -15,10 +15,10 @@ LOGO_PATH = Path("logoBA.png")
 st.set_page_config(
     page_title="Dashboard Food",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
-# limpeza antiga — não faz mal existir, mas já não usamos "nave_page"/"nav_page"
+
 if "nave_page" in st.session_state:
     del st.session_state["nave_page"]
 
@@ -136,11 +136,12 @@ def apply_theme(name: str):
         }}
 
 
-        /* esconder TODOS os botões de minimizar/maximizar da sidebar */
-            [data-testid="collapsedControl"],
-            [data-testid="stSidebarCollapseButton"] {{
-            display: none !important;
+        /* remover qualquer espaço morto no topo da sidebar */
+        section[data-testid="stSidebar"] > div:first-child {{
+        padding-top: 0 !important;
+        margin-top: 0 !important;
         }}
+
 
             /* remover qualquer espaço morto no topo da sidebar */
             section[data-testid="stSidebar"] > div:first-child {{
