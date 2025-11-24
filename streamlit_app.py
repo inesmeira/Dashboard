@@ -2003,9 +2003,10 @@ elif page == "Index Detail":
             title=dict(text="BA Sales", standoff=10),
             overlaying="y",
             side="right",
-            position=1.0,        # colado à direita
+            position=1.0,        
+
             showgrid=False,
-            tickformat=".0s",    # 400k, 1.2M, etc
+            tickformat=".0s",   
         ),
 
         # eixo 3 – direita (Production), um pouco mais para dentro
@@ -2025,8 +2026,6 @@ elif page == "Index Detail":
     )
 
     st.plotly_chart(fig_line_isma, use_container_width=True, key="isma_line_country")
-
-
 
     st.markdown("### Detailed ISMA table")
     st.dataframe(
