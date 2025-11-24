@@ -2017,6 +2017,7 @@ elif page == "Index Detail":
             showgrid=False,
             tickformat=".0s",
         ),
+        
 
         height=450,
         legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
