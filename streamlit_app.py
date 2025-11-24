@@ -60,6 +60,20 @@ THEMES = {
     "default": {"b1": "#8ccf6e", "b2": "#dff0c8", "b3": "#f2f7ea"},
 }
 
+MAP_COLOR_SCALES = {
+    "default": ["#e8f5e9", "#81c784", "#1b5e20"],
+}
+
+def get_map_colors_for_segment(seg: str) -> list[str]:
+    """
+    Usa as cores do THEME do subsegmento para derivar
+    3 tons de verde para o mapa (claro, médio, escuro).
+    """
+    t = THEMES.get(seg, THEMES["default"])
+    # b3 = mais claro, b2 = médio, b1 = mais escuro
+    return [t["b3"], t["b2"], t["b1"]]
+
+
 
 def _logo_data_uri(p: Path) -> str:
     try:
@@ -67,7 +81,6 @@ def _logo_data_uri(p: Path) -> str:
         return "data:image/png;base64," + base64.b64encode(data).decode("ascii")
     except Exception:
         return ""
-
 
 def apply_theme(name: str):
     t = THEMES.get(name, THEMES["default"])
@@ -95,22 +108,148 @@ def apply_theme(name: str):
           background-attachment: fixed;
         }}
 
-        /* ⚠️ REMOVEMOS O BLOCO QUE ESCONDIA O HEADER E O TOOLBAR */
-
         .block-container {{
           padding-top: 1rem !important;
           padding-left: 2.5rem !important;
           padding-right: 2.5rem !important;
-          max-width: 1500px; margin:auto;
+          max-width: 1500px; 
+          margin:auto;
         }}
 
-        section[data-testid="stSidebar"] {{
+        /* ================= SIDEBAR ================= */
+
+        /* fundo da barra lateral (fora do cartão) */
+        [data-testid="stSidebar"] {{
+          background: linear-gradient(
+            180deg,
+            var(--page-bg-2),
+            var(--page-bg)
+          ) !important;
+          border-right: none !important;
+        }}
+
+        /* esconder o botão de minimizar/maximizar */
+        [data-testid="collapsedControl"] {{
+          display: none !important;
+        }}
+
+        /* content da sidebar sem o card branco padrão */
+        [data-testid="stSidebar"] [data-testid="stSidebarContent"] {{
+          padding: 0.8rem 0.6rem !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }}
+
+        [data-testid="stSidebar"] [data-testid="stSidebarContent"] > div {{
+          background: transparent !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border-radius: 0 !important;
+        }}
+
+        /* o nosso cartão */
+        .sb-panel {{
           background: var(--sidebar-bg) !important;
-          border-right: 1px solid var(--sidebar-border);
+          border-radius: 24px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+          padding: 0.8rem 0.6rem 0.9rem 0.6rem;
+          margin-top: 0.6rem;
+          display:flex;
+          flex-direction:column;
+          min-height: calc(100vh - 3rem);
         }}
 
-        .sb-brand {{ display:flex; align-items:center; gap:.6rem; padding:.9rem .8rem .3rem .8rem; }}
-        .sb-title {{ font-weight:700; color:#244c1a; font-size:1.05rem; }}
+        .sb-flex-spacer {{
+          flex: 1 1 auto;
+        }}
+
+        .sb-brand {{
+          display:flex;
+          align-items:center;
+          gap:.6rem;
+          padding:.4rem .7rem .7rem .7rem;
+        }}
+
+        .sb-appname {{
+          font-weight:700;
+          color:#1f2933;
+          font-size:1.0rem;
+        }}
+
+        .sb-appsubtitle {{
+          font-size:0.70rem;
+          color:#7b8794;
+        }}
+
+        .sb-separator {{
+          height: 1px;
+          margin: 0.2rem 0.8rem 0.6rem 0.8rem;
+          background: linear-gradient(to right, transparent, #d6dde8, transparent);
+        }}
+
+        .sb-footer {{
+          display:flex;
+          justify-content: center;
+          gap:0.5rem;
+          padding:0.4rem 0.6rem 0.1rem 0.6rem;
+        }}
+
+        .sb-footer-icon {{
+          width:32px;
+          height:32px;
+          border-radius:999px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          background: var(--b3);
+          color:#24324a;
+          font-size:0.9rem;
+          box-shadow:0 4px 10px rgba(0,0,0,0.06);
+          cursor:pointer;
+        }}
+
+        /* ========= NAV (st.radio) ========= */
+        section[data-testid="stSidebar"] div[role="radiogroup"] {{
+          padding: 0 0.5rem;
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] label {{
+          font-size: 0.92rem;
+          padding: 0.30rem 0.7rem;
+          border-radius: 999px;
+          margin-bottom: 0.35rem;
+          display: flex;
+          align-items: center;
+          gap: 0.55rem;
+          cursor: pointer;
+          transition: all .15s ease-in-out;
+          color: #4b5563;
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
+          background: rgba(0,0,0,.03);
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] {{
+          opacity: 0;
+          width: 0;
+          height: 0;
+          position: absolute;
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {{
+          background: linear-gradient(90deg, var(--b1), var(--b2));
+          color: #111827;
+          font-weight: 600;
+          box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+        }}
+
+        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) span {{
+          color: inherit !important;
+        }}
+
+        /* ========= CARDS & SELECTBOX ========= */
 
         .card {{
           background:#ffffff;
@@ -127,42 +266,18 @@ def apply_theme(name: str):
           border-radius:14px;
           padding:10px 14px;
           margin:10px 0 18px 0;
-          box-shadow:0 4px 10px rgba(0,0,0,.03);
+          box-shadow:0 4px 10px rgba(0,0,0,0.03);
         }}
 
         .metric-card {{
           background: linear-gradient(135deg, var(--b1), var(--b2));
           padding:16px 20px;
           border-radius:16px;
-          box-shadow:0 6px 16px rgba(0,0,0,.06);
+          box-shadow:0 6px 16px rgba(0,0,0,0.06);
         }}
         .metric-label {{ font-size:.9rem; opacity:.85; color:#223; margin-bottom:4px; }}
         .metric-value {{ font-size:1.7rem; font-weight:800; color:#223; }}
         .metric-delta {{ font-size:.85rem; margin-top:4px; font-weight:600; }}
-        .metric-delta.positive {{ color:#2e7d32; }}
-        .metric-delta.negative {{ color:#c62828; }}
-
-        thead th {{ background: var(--b1) !important; color:#fff !important; }}
-
-        .tiles .stButton > button {{
-          width: 100%;
-          background:#ffffff;
-          border:1px solid var(--card-border);
-          border-radius:22px;
-          padding:26px 28px;
-          height: 120px;
-          box-shadow:0 8px 20px rgba(0,0,0,.06);
-          cursor:pointer;
-          transition: all .15s ease-in-out;
-          font-weight:700;
-          font-size:1.25rem;
-          color:#223;
-        }}
-        .tiles .stButton > button:hover {{
-          transform: translateY(-4px);
-          box-shadow:0 12px 24px rgba(0,0,0,0.12);
-          background: var(--b3);
-        }}
 
         div[data-testid="stSelectbox"] > div:nth-child(2) {{
           border: 1px solid #c3cadb;
@@ -175,69 +290,11 @@ def apply_theme(name: str):
           box-shadow: 0 3px 8px rgba(0,0,0,0.06);
           border-color: #9aa6c4;
         }}
-
         div[data-testid="stSelectbox"] label {{
           font-weight: 600;
           font-size: 0.86rem;
           color: #24324a;
         }}
-
-        button[kind="secondary"] {{
-          padding: 0.15rem 0.4rem !important;
-          font-size: 0.8rem !important;
-        }}
-
-        div[data-testid="column"] {{
-          padding-left: 0.8rem !important;
-          padding-right: 0.8rem !important;
-        }}
-
-        .footer-info {{
-          position: fixed;
-          bottom: 10px;
-          left: 10px;
-          background: rgba(255, 255, 255, 0.96);
-          padding: 8px 14px;
-          border-radius: 8px;
-          font-size: 0.75rem;
-          color: #666;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-          z-index: 999;
-          border: 1px solid var(--card-border);
-        }}
-        .footer-info div {{ margin: 2px 0; }}
-
-        section[data-testid="stSidebar"] div[role="radiogroup"] label {{
-          font-size: 1.10rem;
-          padding: 10px 12px;
-          border-radius: 10px;
-          margin-bottom: 6px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }}
-        section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {{
-          background: rgba(0,0,0,.04);
-        }}
-        section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] {{
-          transform: scale(1.2);
-        }}
-        section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked){{
-          background: rgba(138, 180, 248, 0.18);
-          font-weight: 700;
-          border: 1px solid var(--card-border);
-        }}
-
-        .sb-lastupdate {{
-          font-size: .85rem;
-          color: #244c1a;
-          background: #fff;
-          border: 1px solid var(--card-border);
-          padding: 8px 10px;
-          border-radius: 8px;
-          margin: 8px 10px 12px 8px;
-          display: inline-block;
-        }}      
         </style>
         """,
         unsafe_allow_html=True,
@@ -624,6 +681,15 @@ last_update_isma_str = (
 # ----------------- SIDEBAR (NAVEGAÇÃO) -----------------
 PAGES = ["Home", "Overview", "Index Detail", "Table Content"]
 
+
+PAGE_ICONS = {
+    "Home": "🏠",
+    "Overview": "📊",
+    "Index Detail": "📈",
+    "Table Content": "📋",
+}
+
+
 if "current_page" not in st.session_state:
     st.session_state.current_page = "Home"
 
@@ -631,32 +697,40 @@ if "current_page" not in st.session_state:
 def _update_page_from_radio():
     st.session_state.current_page = st.session_state.nav_page_radio
 
-
 with st.sidebar:
     logo_uri = _logo_data_uri(LOGO_PATH)
+
+    st.markdown('<div class="sb-panel">', unsafe_allow_html=True)
+
+    # --- LOGO E TÍTULO ---
     st.markdown(
         f"""
         <div class="sb-brand">
-          {'<img src="'+logo_uri+'" alt="logo" style="height:34px;border-radius:8px"/>' if logo_uri else ''}
-          <div class="sb-title">Dashboard Food</div>
+          {'<img src="'+logo_uri+'" alt="logo" style="height:34px;border-radius:12px;object-fit:cover"/>' if logo_uri else ''}
+          <div>
+            <div class="sb-appname">Food Dashboard</div>
+            <div class="sb-appsubtitle">Market insights</div>
+          </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    st.write("")
-    st.markdown("#### Navigation")
 
-    st.radio(
+    st.markdown("<div class='sb-separator'></div>", unsafe_allow_html=True)
+
+    # --- NAVEGAÇÃO ---
+    choice = st.radio(
         "Go to",
         PAGES,
+        format_func=lambda p: f"{PAGE_ICONS.get(p, '•')}  {p}",
         key="nav_page_radio",
         index=PAGES.index(st.session_state.current_page),
         label_visibility="collapsed",
         on_change=_update_page_from_radio,
     )
 
+    st.markdown("</div>", unsafe_allow_html=True)  # Fecha .sb-panel
 page = st.session_state.current_page
-
 
 # ----------------- OPÇÕES DINÂMICAS -----------------
 existing_subs = sorted(
@@ -822,7 +896,6 @@ if indicator != "(All)":
 
 
 # ----------------- OVERVIEW -----------------
-# ----------------- OVERVIEW -----------------
 if page == "Overview":
     st.markdown("## Overview dashboard")
 
@@ -909,7 +982,7 @@ if page == "Overview":
         st.markdown(
             f"""
             <div class="metric-card">
-                <div class="metric-label">🥇 Top producing country</div>
+                <div class="metric-label">🥇 Top country</div>
                 <div class="metric-value">{top_country}</div>
                 <div class="metric-delta" style="color:#555;">
                     {share_text} of selection volume
@@ -940,6 +1013,7 @@ if page == "Overview":
     # -------- GRÁFICO ÚNICO: TONNES x HARVEST PERIOD x INDICATOR --------
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
+    # aplicar os mesmos filtros, mas SEM o filtro de indicator
     flt_chart = df.copy()
     if subsegment != "(All)":
         flt_chart = flt_chart[flt_chart["subsegment"] == subsegment]
@@ -959,51 +1033,107 @@ if page == "Overview":
     )
 
     if not by_hp.empty:
+        # ordenar períodos
         by_hp["sort_year"] = by_hp["harvest_period"].apply(season_to_year)
         by_hp = by_hp.sort_values(["sort_year", "harvest_period", "indicator"])
         ordered_periods = list(dict.fromkeys(by_hp["harvest_period"]))
 
-        fig = px.area(
-            by_hp,
-            x="harvest_period",
-            y="tonnes",
-            color="indicator",
-            line_group="indicator",
-            markers=True,
-            title="Tonnes por Harvest period e Indicator",
-        )
+        # layout: gráfico + seletor à direita
+        col_chart, col_filter = st.columns([4, 1])
 
-        fig.update_traces(
-            mode="lines+markers",
-            texttemplate="%{y:.0f}",
-            textposition="top center",
-        )
+        with col_filter:
+            indicator_options = ["All"] + sorted(by_hp["indicator"].dropna().unique())
+            indicator_filter = st.selectbox(
+                "",
+                indicator_options,
+                index=0,
+                label_visibility="collapsed",  # esconde o texto "Indicator to display"
+                key="overview_indicator_filter",
+            )
 
-        fig.update_layout(
-            xaxis_title="Harvest period",
-            yaxis_title="Tonnes",
-            hovermode="x unified",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            height=430,
-            legend_title_text="Indicator",
-        )
+        # aplicar filtro de indicador se não for "All"
+        if indicator_filter != "All":
+            by_hp_plot = by_hp[by_hp["indicator"] == indicator_filter].copy()
+        else:
+            by_hp_plot = by_hp.copy()
 
-        fig.update_xaxes(
-            categoryorder="array",
-            categoryarray=ordered_periods,
-        )
+        # paleta de verdes
+        green_palette = ["#1b5e20", "#2e7d32", "#66bb6a", "#a5d6a7"]
 
-        st.plotly_chart(fig, use_container_width=True)
+        with col_chart:
+            st.markdown("#### Tonnes by harvest period and indicator")
+
+            if indicator_filter == "All":
+                fig = px.area(
+                    by_hp_plot,
+                    x="harvest_period",
+                    y="tonnes",
+                    color="indicator",
+                    line_group="indicator",
+                    markers=True,
+                    title="Tonnes by harvest period and indicator",
+                    line_shape="spline",
+                    color_discrete_sequence=green_palette,
+                )
+            else:
+                fig = px.area(
+                    by_hp_plot,
+                    x="harvest_period",
+                    y="tonnes",
+                    markers=True,
+                    title=f"Tonnes – indicator {indicator_filter}",
+                    line_shape="spline",
+                    color_discrete_sequence=[green_palette[0]],
+                )
+
+            # ticks de 5 em 5 anos
+            years_sorted = sorted(
+                y for y in by_hp_plot["sort_year"].dropna().unique()
+            )
+            if years_sorted:
+                tick_years = years_sorted[::5]  # de ~5 em 5
+                tickvals = []
+                for y in tick_years:
+                    hp = (
+                        by_hp_plot.loc[by_hp_plot["sort_year"] == y, "harvest_period"]
+                        .iloc[0]
+                    )
+                    tickvals.append(hp)
+                fig.update_xaxes(
+                    categoryorder="array",
+                    categoryarray=ordered_periods,
+                    tickmode="array",
+                    tickvals=tickvals,
+                    ticktext=tickvals,
+                )
+
+            # hover mais simples + tonnes arredondados
+            fig.update_traces(
+                mode="lines+markers",
+                hovertemplate="<b>%{x}</b><br>Tonnes: %{y:,.0f} t<extra></extra>",
+            )
+
+            fig.update_layout(
+                xaxis_title="Harvest period",
+                yaxis_title="Tonnes",
+                hovermode="x unified",
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                height=430,
+                legend_title_text="Indicator",
+                margin=dict(l=0, r=0, t=40, b=0),
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Sem dados para os filtros atuais.")
+        st.info("No data for the current filters.")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+
+
     # -------- Top 15 + Distribuição --------
     flt_country = flt.copy()
-    if indicator == "(All)" and "C" in df["indicator"].unique():
-        flt_country = flt_country[flt_country["indicator"] == "C"]
     flt_country = drop_aggregate_countries(flt_country, "country")
 
     by_country = (
@@ -1097,13 +1227,11 @@ if page == "Overview":
             st.info("Sem dados.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # -------- Mapa --------
-    st.markdown("### 🌍 Global Map by Tonnes")
+    # -------- Global Map by Tonnes --------
+    st.markdown("### 🌍 Global map by tonnes")
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
     flt_map = flt.copy()
-    if indicator == "(All)" and "C" in flt_map["indicator"].unique():
-        flt_map = flt_map[flt_map["indicator"] == "C"]
     flt_map = drop_aggregate_countries(flt_map, "country")
     flt_map = flt_map[flt_map["harvest_year"].notna()]
 
@@ -1111,71 +1239,171 @@ if page == "Overview":
         st.info("No data available for the map with the current filters.")
         st.markdown("</div>", unsafe_allow_html=True)
     else:
-        col_mode, _ = st.columns([2, 1])
-        with col_mode:
-            map_mode = st.radio(
-                "View mode",
-                ["Latest year", "Select year"],
-                horizontal=True,
-                key="map_mode",
-            )
+
+        # ---- SELECTBOXES (ANO + INDICADOR) ----
+        col_gap, col_year, col_ind = st.columns([4.5, 1.2, 1.2])
 
         years_available = sorted(int(y) for y in flt_map["harvest_year"].unique())
+        indicators_available = sorted(df["indicator"].dropna().unique())
 
-        if map_mode == "Latest year":
-            latest_year = years_available[-1]
-            data_year = (
-                flt_map[flt_map["harvest_year"] == latest_year]
-                .groupby("country", as_index=False)["tonnes"]
-                .sum()
+        # Year selector
+        with col_year:
+            year_to_use = st.selectbox(
+                "Year",
+                years_available,
+                index=len(years_available) - 1,
+                label_visibility="collapsed",
+                key="map_year_select",
             )
-            title_suffix = f"(Year {latest_year})"
+
+        # Indicator selector
+        with col_ind:
+            indicator_map = st.selectbox(
+                "Indicator",
+                indicators_available,
+                index=indicators_available.index("C") if "C" in indicators_available else 0,
+                label_visibility="collapsed",
+                key="map_indicator_select",
+            )
+
+        # filtrar por indicador escolhido
+        flt_map = flt_map[flt_map["indicator"] == indicator_map]
+
+        data_year = (
+            flt_map[flt_map["harvest_year"] == year_to_use]
+            .groupby("country", as_index=False)["tonnes"]
+            .sum()
+        )
+
+        if data_year.empty:
+            st.info("No data available for this year.")
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
-            sel_year = st.selectbox(
-                "Select year", years_available, index=len(years_available) - 1
+            # -------- CORES DO MAPA EM FUNÇÃO DO SUBSEGMENTO --------
+            seg = subsegment if subsegment != "(All)" else "default"
+            c_light, c_mid, c_dark = get_map_colors_for_segment(seg)
+            color_scale = [
+                [0.0, c_light],
+                [0.5, c_mid],
+                [1.0, c_dark],
+            ]
+
+            # -------- BASE: CHOROPLETH --------
+            fig_map = go.Figure()
+
+            fig_map.add_trace(
+                go.Choropleth(
+                    locations=data_year["country"],
+                    locationmode="country names",
+                    z=data_year["tonnes"],
+                    colorscale=color_scale,
+                    marker_line_color="white",
+                    marker_line_width=0.6,
+                    colorbar=dict(
+                        title="Tonnes",
+                        ticksuffix=" t",
+                    ),
+                    hovertemplate=(
+                        "<b>%{location}</b><br>"
+                        "Tonnes: %{z:,.0f} t"
+                        "<extra></extra>"
+                    ),
+                    showscale=True,
+                    name="Tonnes",
+                )
             )
-            data_year = (
-                flt_map[flt_map["harvest_year"] == sel_year]
-                .groupby("country", as_index=False)["tonnes"]
-                .sum()
+
+            # -------- LABELS DOS CONTINENTES --------
+            continents = pd.DataFrame(
+                [
+                    {"name": "North America", "lon": -100, "lat": 40},
+                    {"name": "South America", "lon": -60, "lat": -20},
+                    {"name": "Europe", "lon": 15, "lat": 50},
+                    {"name": "Africa", "lon": 20, "lat": 5},
+                    {"name": "Asia", "lon": 90, "lat": 35},
+                    {"name": "Oceania", "lon": 140, "lat": -25},
+                ]
             )
-            title_suffix = f"(Year {sel_year})"
 
-        fig_map = px.choropleth(
-            data_year,
-            locations="country",
-            locationmode="country names",
-            color="tonnes",
-            hover_name="country",
-            color_continuous_scale=["#e0f2d6", "#7faa5c", "#2f5e1b"],
-        )
+            fig_map.add_trace(
+                go.Scattergeo(
+                    lon=continents["lon"],
+                    lat=continents["lat"],
+                    text=continents["name"],
+                    mode="text",
+                    textfont=dict(
+                        size=13,
+                        color="rgba(0, 0, 0, 0.55)",
+                    ),
+                    showlegend=False,
+                    hoverinfo="skip",
+                )
+            )
 
-        fig_map.update_layout(
-            height=430,
-            margin=dict(l=0, r=0, t=40, b=0),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            title_text=f"Global Tonnes Map {title_suffix}",
-            title_x=0.02,
-            coloraxis_colorbar=dict(
-                title="Tonnes",
-                ticksuffix=" t",
-            ),
-            geo=dict(
-                showframe=False,
-                showcoastlines=True,
-                coastlinecolor="rgba(0,0,0,0.25)",
-                projection_type="natural earth",
-                showocean=True,
-                oceancolor="rgb(185, 215, 250)",
-                showland=True,
-                landcolor="rgb(248, 248, 248)",
-                bgcolor="rgba(0,0,0,0)",
-            ),
-        )
+            # -------- LABELS DOS OCEANOS --------
+            oceans = pd.DataFrame(
+                [
+                    {"name": "Atlantic Ocean", "lon": -30, "lat": 0},
+                    {"name": "Pacific Ocean", "lon": -140, "lat": -5},
+                    {"name": "Indian Ocean", "lon": 85, "lat": -20},
+                    {"name": "Arctic Ocean", "lon": 0, "lat": 75},
+                    {"name": "Southern Ocean", "lon": 20, "lat": -65},
+                ]
+            )
 
-        st.plotly_chart(fig_map, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+
+            fig_map.add_trace(
+                go.Scattergeo(
+                    lon=oceans["lon"],
+                    lat=oceans["lat"],
+                    text=oceans["name"],
+                    mode="text",
+                    textfont=dict(
+                        size=12,
+                        color="rgba(0, 0, 0, 0.45)",
+                        style="italic",
+                    ),
+                    showlegend=False,
+                    hoverinfo="skip",
+                )
+            )
+
+            # -------- LAYOUT FINAL --------
+            fig_map.update_layout(
+                title_text=f"Global tonnes map (year {year_to_use}) – Indicator {indicator_map}",
+                title_x=0.01,
+                height=520,
+                margin=dict(l=0, r=0, t=40, b=0),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                geo=dict(
+                    scope="world",
+                    projection_type="natural earth",
+                    showframe=False,
+                    showcoastlines=True,
+                    coastlinecolor="rgba(0,0,0,0.25)",
+                    showcountries=True,
+                    countrycolor="rgba(255,255,255,0.7)",
+                    showocean=True,
+                    oceancolor="#e3f2fd",
+                    showland=True,
+                    landcolor="#f9fcff",
+                    showlakes=True,
+                    lakecolor="#e3f2fd",
+                    bgcolor="rgba(0,0,0,0)",
+                ),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                ),
+            )
+
+            st.plotly_chart(fig_map, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
 
     # -------- resto do Overview (tabs + heatmap) --------
     st.markdown("## Advanced Analytics")
