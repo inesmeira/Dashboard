@@ -958,7 +958,6 @@ if page == "Overview":
                 <div class="metric-label">📦 Total volume (tonnes)</div>
                 <div class="metric-value">{total_tonnes:,.0f} t</div>
                 <div class="metric-delta" style="color:#2e7d32;">
-                    All filters applied
                 </div>
             </div>
             """,
@@ -973,7 +972,6 @@ if page == "Overview":
                 <div class="metric-label">🌍 Countries with data</div>
                 <div class="metric-value">{n_countries}</div>
                 <div class="metric-delta" style="color:#555;">
-                    Excluding EU / World / global totals
                 </div>
             </div>
             """,
@@ -1943,10 +1941,11 @@ elif page == "Index Detail":
             key="isma_radar_subindices",
         )
 
-    st.markdown("### ISMA evolution vs BA Sales")
+    st.markdown("### ISMA Evolution vs BA Sales")
 
     fig_line_isma = go.Figure()
 
+    # ISMA
     fig_line_isma.add_trace(
         go.Scatter(
             x=df_country["Harvest Period"],
@@ -1955,15 +1954,16 @@ elif page == "Index Detail":
             name="ISMA Final",
             line=dict(color="#6ca86a", width=3),
             marker=dict(size=8),
-            yaxis="y1",
+            yaxis="y",   # eixo principal (esquerda)
         )
     )
 
-    if sales_col is not None and df_country[sales_col].notna().any():
+    # BA Sales (eixo da direita 1)
+    if "SalesBA" in df_country.columns and df_country["SalesBA"].notna().any():
         fig_line_isma.add_trace(
             go.Scatter(
                 x=df_country["Harvest Period"],
-                y=df_country[sales_col],
+                y=df_country["SalesBA"],
                 mode="lines+markers",
                 name="BA Sales",
                 line=dict(color="#1f77b4", width=3),
@@ -1972,26 +1972,60 @@ elif page == "Index Detail":
             )
         )
 
+    # Production (eixo da direita 2, um pouco mais “para dentro”)
+    if "Production" in df_country.columns and df_country["Production"].notna().any():
+        fig_line_isma.add_trace(
+            go.Scatter(
+                x=df_country["Harvest Period"],
+                y=df_country["Production"],
+                mode="lines+markers",
+                name="Production",
+                line=dict(color="#d62728", width=3),
+                marker=dict(size=7),
+                yaxis="y3",
+            )
+        )
+
+    # 👉 ESTE update_layout FICA SEMPRE FORA DOS if
     fig_line_isma.update_layout(
-        title=f"ISMA & BA Sales over time – {sel_country}",
+        title=f"ISMA, BA Sales & Production over time – {sel_country}",
         xaxis=dict(title="Harvest Period"),
+
+        # eixo 1 – esquerda (ISMA)
         yaxis=dict(
             title="ISMA Final",
             side="left",
             range=[0, 1],
         ),
+
+        # eixo 2 – direita (BA Sales)
         yaxis2=dict(
-            title="BA Sales",
+            title=dict(text="BA Sales", standoff=10),
             overlaying="y",
             side="right",
+            position=1.0,        # colado à direita
             showgrid=False,
+            tickformat=".0s",    # 400k, 1.2M, etc
         ),
-        height=400,
+
+        # eixo 3 – direita (Production), um pouco mais para dentro
+        yaxis3=dict(
+            title=dict(text="Production", standoff=10),
+            overlaying="y",
+            side="right",
+            position=0.88,       # ENTRE 0 e 1, afastado do y2
+            showgrid=False,
+            tickformat=".0s",
+        ),
+
+        height=450,
         legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
         plot_bgcolor="white",
     )
 
     st.plotly_chart(fig_line_isma, use_container_width=True, key="isma_line_country")
+
+
 
     st.markdown("### Detailed ISMA table")
     st.dataframe(
