@@ -128,9 +128,24 @@ def apply_theme(name: str):
           border-right: none !important;
         }}
 
-        /* esconder o botão de minimizar/maximizar */
-        [data-testid="collapsedControl"] {{
-          display: none !important;
+        /* remover o "card" branco padrão dentro da sidebar */
+            section[data-testid="stSidebar"] > div {{
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+        }}
+
+
+        /* esconder TODOS os botões de minimizar/maximizar da sidebar */
+            [data-testid="collapsedControl"],
+            [data-testid="stSidebarCollapseButton"] {{
+            display: none !important;
+        }}
+
+            /* remover qualquer espaço morto no topo da sidebar */
+            section[data-testid="stSidebar"] > div:first-child {{
+            padding-top: 0 !important;
+            margin-top: 0 !important;
         }}
 
         /* content da sidebar sem o card branco padrão */
@@ -148,18 +163,16 @@ def apply_theme(name: str):
           border-radius: 0 !important;
         }}
 
-        /* o nosso cartão */
         .sb-panel {{
-          background: var(--sidebar-bg) !important;
-          border-radius: 24px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-          padding: 0.8rem 0.6rem 0.9rem 0.6rem;
-          margin-top: 0.6rem;
-          display:flex;
-          flex-direction:column;
-          min-height: calc(100vh - 3rem);
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0.8rem 0.6rem 0.9rem 0.6rem;
+            margin: 0.8rem 0.6rem;
+            display:flex;
+            flex-direction:column;
+            min-height: auto;
         }}
-
+            
         .sb-flex-spacer {{
           flex: 1 1 auto;
         }}
@@ -344,34 +357,24 @@ def build_rename_map(columns: list[str]) -> dict[str, str]:
         return " ".join(t.split())
 
     TARGETS = {
-        "harvest_period": [
-            "harvest period",
-            "harvestperiod",
-            "haverst period",
-            "periodo da colheita",
-            "campanha",
-            "safra",
-            "epoca",
-        ],
-        "country": ["country", "member state", "memberstate", "pais", "estado membro"],
-        "product_type": [
-            "product type",
-            "producttype",
-            "product",
-            "tipo produto",
-            "tipo de produto",
-        ],
-        "indicator": ["indicator", "indicador"],
-        "tonnes": [
-            "tonnes",
-            "tons",
-            "tonnage",
-            "tonnages",
-            "toneladas",
-            "ton",
-            "tonnage (t)",
-        ],
+    "harvest_period": [
+        "harvest", "period", "colheita", "campanha", "safra", "época",
+    ],
+    "country": [
+        "country", "member", "state", "pais", "país",
+    ],
+    "product_type": [
+        "product", "tipo",
+    ],
+    "indicator": [
+        "indicator", "indicador",
+    ],
+    "tonnes": [
+        "ton", "tonne", "tonelada", "tonnage",
+    ],
     }
+
+
     norm_cols = {c: norm(c) for c in columns}
     rename_map = {}
     for target, aliases in TARGETS.items():
@@ -683,10 +686,10 @@ PAGES = ["Home", "Overview", "Index Detail", "Table Content"]
 
 
 PAGE_ICONS = {
-    "Home": "🏠",
-    "Overview": "📊",
-    "Index Detail": "📈",
-    "Table Content": "📋",
+    "Home": "",
+    "Overview": "",
+    "Index Detail": "",
+    "Table Content": "",
 }
 
 
