@@ -1027,7 +1027,7 @@ if page == "Overview":
         flt_chart = flt_chart[flt_chart["harvest_period"] == harvest]
 
     flt_chart = drop_aggregate_countries(flt_chart, "country")
-
+    
     by_hp = (
         flt_chart.groupby(["harvest_period", "indicator"], dropna=True)["tonnes"]
         .sum()
@@ -1043,13 +1043,13 @@ if page == "Overview":
         # layout: gráfico + seletor à direita
         col_chart, col_filter = st.columns([4, 1])
 
+        # --- SELECTBOX (na coluna da direita) ---
         with col_filter:
             indicator_options = ["All"] + sorted(by_hp["indicator"].dropna().unique())
             indicator_filter = st.selectbox(
-                "",
+                "Indicator",
                 indicator_options,
                 index=0,
-                label_visibility="collapsed",  # esconde o texto "Indicator to display"
                 key="overview_indicator_filter",
             )
 
@@ -1060,7 +1060,7 @@ if page == "Overview":
             by_hp_plot = by_hp.copy()
 
         # paleta de verdes
-        green_palette = ["#1b5e20", "#2e7d32", "#66bb6a", "#a5d6a7"]
+        green_palette = ["#2e7d32", "#66bb6a", "#9ccc65", "#c5e1a5"]
 
         with col_chart:
             st.markdown("#### Tonnes by harvest period and indicator")
@@ -1109,7 +1109,7 @@ if page == "Overview":
                     ticktext=tickvals,
                 )
 
-            # hover mais simples + tonnes arredondados
+            # hover + formato
             fig.update_traces(
                 mode="lines+markers",
                 hovertemplate="<b>%{x}</b><br>Tonnes: %{y:,.0f} t<extra></extra>",
@@ -1124,14 +1124,21 @@ if page == "Overview":
                 height=430,
                 legend_title_text="Indicator",
                 margin=dict(l=0, r=0, t=40, b=0),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,      # legenda por cima do gráfico
+                    xanchor="right",
+                    x=1,
+                ),
             )
 
             st.plotly_chart(fig, use_container_width=True)
+
     else:
         st.info("No data for the current filters.")
 
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 
     # -------- Top 15 + Distribuição --------
