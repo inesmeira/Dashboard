@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -309,7 +310,122 @@ def apply_theme(name: str):
           font-size: 0.86rem;
           color: #24324a;
         }}
-        </style>
+
+        /* ===== HERO SUMMARY – versão muito suave ===== */
+
+        .hero-card {{
+        background: linear-gradient(
+                135deg,
+                rgba(156, 204, 101, 0.75) 20%,
+                #ffffff 100%
+            );
+        border-radius: 20px;
+        padding: 22px 26px;
+        margin-bottom: 28px;
+        border: 1px solid var(--card-border);
+        box-shadow: 0 8px 26px rgba(15, 23, 42, 0.05);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        }}
+
+        .hero-main {{
+        flex: 1 1 280px;
+        min-width: 240px;
+        }}
+
+        .hero-main-title {{
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: .14em;
+        color: #64706b;
+        }}
+
+        .hero-main-value {{
+        font-size: 2.3rem;
+        font-weight: 800;
+        color: #1f2e27;
+        margin-top: 4px;
+        }}
+
+        .hero-main-sub {{
+        font-size: 0.9rem;
+        margin-top: 6px;
+        color: #55645d;
+        }}
+
+        /* ---- Pills muito leves ---- */
+
+        .hero-pills {{
+        flex: 2 1 420px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        }}
+
+        .hero-pill {{
+        flex: 1 1 200px;
+        min-width: 180px;
+
+        background: linear-gradient(
+                145deg,
+                rgba(240, 249, 244, 0.55) 0%,
+                #ffffff 70%
+            );
+
+        border-radius: 16px;
+        padding: 12px 16px;
+        border: 1px solid var(--card-border);
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        }}
+
+        .hero-pill-label {{
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: .16em;
+        color: #7c8782;
+        }}
+
+        .hero-pill-value {{
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #243229;
+        }}
+
+        .hero-pill-sub {{
+        font-size: 0.83rem;
+        color: #6c7a75;
+        }}
+
+                /* ===== MINI CHART CARDS (linha de 3) ===== */
+
+        .mini-card {{
+          background:#ffffff;
+          border:1px solid var(--card-border);
+          border-radius:16px;
+          padding:12px 14px 10px 14px;
+          margin:18px 0;
+          box-shadow:0 4px 12px rgba(15,23,42,0.04);
+        }}
+
+        .mini-card-title {{
+          font-size:0.9rem;
+          font-weight:600;
+          color:#111827;
+          margin-bottom:4px;
+        }}
+
+        .mini-card-sub {{
+          font-size:0.75rem;
+          color:#6b7280;
+          margin-bottom:4px;
+        }}
+
+      </style>
         """,
         unsafe_allow_html=True,
     )
@@ -898,6 +1014,24 @@ if harvest != "(All)":
 if indicator != "(All)":
     flt = flt[flt["indicator"] == indicator]
 
+    
+# Helpers para gerir as vistas detalhadas do mini-dashboard
+DETAIL_FLAGS = [
+    "show_trend_detail",
+    "show_topcountries_detail",
+    "show_yoy_detail",
+]
+
+def open_detail(flag_name: str):
+    """Abre só o detalhe indicado e fecha os outros."""
+    for k in DETAIL_FLAGS:
+        st.session_state[k] = (k == flag_name)
+
+def close_all_details():
+    """Fecha todos os detalhes."""
+    for k in DETAIL_FLAGS:
+        st.session_state[k] = False
+
 
 # ----------------- OVERVIEW -----------------
 if page == "Overview":
@@ -906,6 +1040,11 @@ if page == "Overview":
     if flt.empty:
         st.info("No data available for the selected subsegment / filters.")
         st.stop()
+
+    # flags para mostrar/ocultar vistas detalhadas
+    for k in ["show_trend_detail", "show_topcountries_detail", "show_yoy_detail"]:
+        if k not in st.session_state:
+            st.session_state[k] = False
 
     # usar sempre dados sem agregados para KPIs (EU, World, Total… fora)
     flt_base = drop_aggregate_countries(flt.copy(), "country")
@@ -939,7 +1078,6 @@ if page == "Overview":
 
     # --- KPI 4: YoY growth (último ano) ---
     growth, trend = calculate_growth(flt_base)
-    delta_class = "positive" if growth > 0 else "negative" if growth < 0 else ""
     arrow = "↑" if growth > 0 else "↓" if growth < 0 else "→"
     growth_caption = (
         f"{arrow} vs previous harvest"
@@ -947,72 +1085,312 @@ if page == "Overview":
         else "Same as previous harvest"
     )
 
-    # ------ LAYOUT DOS CARDS (4 numa linha) ------
-    k1, k2, k3, k4 = st.columns(4)
-
-    # KPI 1 – total volume
-    with k1:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">📦 Total volume (tonnes)</div>
-                <div class="metric-value">{total_tonnes:,.0f} t</div>
-                <div class="metric-delta" style="color:#2e7d32;">
-                </div>
+    # ---------- HERO CARD ----------
+    st.markdown(
+        f"""
+        <div class="hero-card">
+          <div class="hero-left">
+            <div class="hero-main-label">SELECTION VOLUME</div>
+            <div class="hero-main-value">{total_tonnes:,.0f} t</div>
+            <div class="hero-main-sub">
+              Across {n_countries} countries · {growth:+.1f}% YoY ({growth_caption})
             </div>
+          </div>
+          <div class="hero-pills">
+            <div class="hero-pill">
+              <div class="hero-pill-label">Top country</div>
+              <div class="hero-pill-value">{top_country}</div>
+              <div class="hero-pill-sub">
+                {top_share:.1f}% of total volume
+              </div>
+            </div>
+            <div class="hero-pill">
+              <div class="hero-pill-label">Countries</div>
+              <div class="hero-pill-value">{n_countries}</div>
+              <div class="hero-pill-sub">
+                with non-aggregate data
+              </div>
+            </div>
+            <div class="hero-pill">
+              <div class="hero-pill-label">Latest harvest YoY</div>
+              <div class="hero-pill-value">{growth:+.1f}%</div>
+              <div class="hero-pill-sub">
+                {growth_caption}
+              </div>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.write("")  # pequeno espaço
+
+    # ---------- MINI DASHBOARD ROW (3 small charts) ----------
+    col_m1, col_m2, col_m3 = st.columns(3)
+
+    # base temporal: total tonnes por ano (sem agregados)
+    flt_ts = flt_base[flt_base["harvest_year"].notna()].copy()
+    by_year_ts = (
+        flt_ts.groupby("harvest_year", dropna=True)["tonnes"]
+        .sum()
+        .reset_index()
+        .sort_values("harvest_year")
+    )
+
+    # preparar dados para mini 2 (latest year)
+    latest_year = int(flt_ts["harvest_year"].max()) if not flt_ts.empty else None
+    latest_df = pd.DataFrame()
+    if latest_year is not None:
+        latest_df = (
+            flt_ts[flt_ts["harvest_year"] == latest_year]
+            .groupby("country", dropna=True)["tonnes"]
+            .sum()
+            .reset_index()
+            .sort_values("tonnes", ascending=False)
+        )
+
+    # preparar dados para mini 3 (YoY)
+    yoy_df = pd.DataFrame()
+    if len(by_year_ts) >= 2:
+        yoy_df = by_year_ts.copy()
+        yoy_df["yoy"] = yoy_df["tonnes"].pct_change() * 100
+        yoy_df = yoy_df.dropna()
+
+    # ---------------- MINI 1 – Volume trend ----------------
+    with col_m1:
+        st.markdown(
+            """
+            <div class="mini-card">
+              <div class="mini-card-header">
+                <div>
+                  <div class="mini-card-title">Volume trend</div>
+                  <div class="mini-card-sub">Total tonnes by harvest year</div>
+                </div>
+              </div>
             """,
             unsafe_allow_html=True,
         )
 
-    # KPI 2 – countries with data
-    with k2:
+        if not by_year_ts.empty:
+            # botão de expandir
+            c_l, c_r = st.columns([1, 0.55])
+            with c_r:
+                if st.button("↗ Expand", key="btn_trend_expand"):
+                    st.session_state["show_trend_detail"] = True
+
+            fig_small1 = go.Figure()
+            fig_small1.add_trace(
+                go.Scatter(
+                    x=by_year_ts["harvest_year"],
+                    y=by_year_ts["tonnes"],
+                    mode="lines",
+                    line=dict(width=2.5, color="#22c55e"),
+                    hovertemplate="Year %{x}: %{y:,.0f} t<extra></extra>",
+                )
+            )
+            fig_small1.update_layout(
+                height=160,
+                margin=dict(l=0, r=0, t=2, b=0),
+                xaxis=dict(showgrid=False, showticklabels=False),
+                yaxis=dict(showgrid=False, showticklabels=False),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(
+                fig_small1,
+                use_container_width=True,
+                config={"displayModeBar": False},
+            )
+        else:
+            st.info("No yearly data available for this selection.")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ---------------- MINI 2 – Top countries (latest year) ----------------
+    with col_m2:
         st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">🌍 Countries with data</div>
-                <div class="metric-value">{n_countries}</div>
-                <div class="metric-delta" style="color:#555;">
+            """
+            <div class="mini-card">
+              <div class="mini-card-header">
+                <div>
+                  <div class="mini-card-title">Top countries (latest year)</div>
+                  <div class="mini-card-sub">Tonnes by country in the last harvest</div>
                 </div>
-            </div>
+              </div>
             """,
             unsafe_allow_html=True,
         )
 
-    # KPI 3 – top producing country
-    with k3:
-        share_text = f"{top_share:.1f}%" if top_country != "—" else "No data"
+        if not latest_df.empty:
+            c_l2, c_r2 = st.columns([1, 0.55])
+            with c_r2:
+                if st.button("↗ Expand", key="btn_topcountries_expand"):
+                    st.session_state["show_topcountries_detail"] = True
+
+            top5_latest = latest_df.head(5)
+
+            fig_small2 = px.bar(
+                top5_latest,
+                x="country",
+                y="tonnes",
+                color_discrete_sequence=["#22c55e"],
+            )
+            fig_small2.update_layout(
+                height=160,
+                margin=dict(l=0, r=0, t=2, b=0),
+                xaxis=dict(showgrid=False, showticklabels=False),
+                yaxis=dict(showgrid=False, showticklabels=False),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(
+                fig_small2,
+                use_container_width=True,
+                config={"displayModeBar": False},
+            )
+        else:
+            st.info("No country data for the latest year.")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ---------------- MINI 3 – YoY growth % ----------------
+    with col_m3:
         st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">🥇 Top country</div>
-                <div class="metric-value">{top_country}</div>
-                <div class="metric-delta" style="color:#555;">
-                    {share_text} of selection volume
+            """
+            <div class="mini-card">
+              <div class="mini-card-header">
+                <div>
+                  <div class="mini-card-title">YoY growth</div>
+                  <div class="mini-card-sub">Year-over-year change (%)</div>
                 </div>
-            </div>
+              </div>
             """,
             unsafe_allow_html=True,
         )
 
-    # KPI 4 – YoY growth (último ano)
-    with k4:
-        color = "#2e7d32" if growth > 0 else "#c62828" if growth < 0 else "#555555"
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">📉 YoY growth (latest year)</div>
-                <div class="metric-value">{growth:+.1f}%</div>
-                <div class="metric-delta {delta_class}" style="color:{color};">
-                    {growth_caption}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        if not yoy_df.empty:
+            last_years_yoy = yoy_df.tail(8)
+            colors_yoy = [
+                "#dc2626" if v < 0 else "#22c55e" for v in last_years_yoy["yoy"]
+            ]
+
+            c_l3, c_r3 = st.columns([1, 0.55])
+            with c_r3:
+                if st.button("↗ Expand", key="btn_yoy_expand"):
+                    st.session_state["show_yoy_detail"] = True
+
+            fig_small3 = go.Figure(
+                go.Bar(
+                    x=last_years_yoy["harvest_year"],
+                    y=last_years_yoy["yoy"],
+                    marker_color=colors_yoy,
+                    hovertemplate="Year %{x}: %{y:.1f}%<extra></extra>",
+                )
+            )
+            fig_small3.update_layout(
+                height=160,
+                margin=dict(l=0, r=0, t=2, b=0),
+                xaxis=dict(showgrid=False, showticklabels=False),
+                yaxis=dict(showgrid=False, showticklabels=False),
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+            )
+            st.plotly_chart(
+                fig_small3,
+                use_container_width=True,
+                config={"displayModeBar": False},
+            )
+        else:
+            st.info("Need at least 2 years to compute YoY.")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # =================== DETALHE DOS MINI-GRÁFICOS ===================
+
+    # Detalhe 1 – Volume trend
+    if st.session_state.get("show_trend_detail") and not by_year_ts.empty:
+        st.markdown("### Volume trend – detailed view")
+
+        fig_big1 = go.Figure()
+        fig_big1.add_trace(
+            go.Scatter(
+                x=by_year_ts["harvest_year"],
+                y=by_year_ts["tonnes"],
+                mode="lines+markers",
+                line=dict(width=3, color="#16a34a"),
+                marker=dict(size=7),
+                hovertemplate="Year %{x}: %{y:,.0f} t<extra></extra>",
+            )
         )
+        fig_big1.update_layout(
+            xaxis_title="Harvest year",
+            yaxis_title="Tonnes",
+            height=420,
+            plot_bgcolor="white",
+            margin=dict(l=0, r=0, t=40, b=0),
+        )
+        st.plotly_chart(fig_big1, use_container_width=True)
 
-    st.write("")
+        if st.button("Close detailed view", key="btn_trend_close"):
+            st.session_state["show_trend_detail"] = False
+            st.experimental_rerun()
 
-    # -------- GRÁFICO ÚNICO: TONNES x HARVEST PERIOD x INDICATOR --------
+    # Detalhe 2 – Top countries (latest year)
+    if st.session_state.get("show_topcountries_detail") and not latest_df.empty:
+        st.markdown(f"### Top countries in {latest_year} – detailed view")
+
+        fig_big2 = px.bar(
+            latest_df.head(15),
+            x="country",
+            y="tonnes",
+            title=f"Top countries in {latest_year}",
+            color_discrete_sequence=["#16a34a"],
+        )
+        fig_big2.update_layout(
+            xaxis_title="Country",
+            yaxis_title="Tonnes",
+            height=420,
+            plot_bgcolor="white",
+            margin=dict(l=0, r=0, t=40, b=0),
+        )
+        st.plotly_chart(fig_big2, use_container_width=True)
+
+        if st.button("Close detailed view", key="btn_topcountries_close"):
+            st.session_state["show_topcountries_detail"] = False
+            st.experimental_rerun()
+
+    # Detalhe 3 – YoY série completa
+    if st.session_state.get("show_yoy_detail") and not yoy_df.empty:
+        st.markdown("### Year-over-year growth – detailed view")
+
+        colors_full = ["#dc2626" if v < 0 else "#22c55e" for v in yoy_df["yoy"]]
+
+        fig_big3 = go.Figure(
+            go.Bar(
+                x=yoy_df["harvest_year"],
+                y=yoy_df["yoy"],
+                marker_color=colors_full,
+                hovertemplate="Year %{x}: %{y:.1f}%<extra></extra>",
+            )
+        )
+        fig_big3.update_layout(
+            title="Year-over-year growth rate (%)",
+            xaxis_title="Harvest year",
+            yaxis_title="YoY change (%)",
+            height=420,
+            plot_bgcolor="white",
+            margin=dict(l=0, r=0, t=40, b=0),
+        )
+        st.plotly_chart(fig_big3, use_container_width=True)
+
+        if st.button("Close detailed view", key="btn_yoy_close"):
+            st.session_state["show_yoy_detail"] = False
+            st.experimental_rerun()
+
+
+
+    # -------- TIME VIEW: TONNES x HARVEST PERIOD x INDICATOR --------
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
     # aplicar os mesmos filtros, mas SEM o filtro de indicator
@@ -1027,7 +1405,7 @@ if page == "Overview":
         flt_chart = flt_chart[flt_chart["harvest_period"] == harvest]
 
     flt_chart = drop_aggregate_countries(flt_chart, "country")
-    
+
     by_hp = (
         flt_chart.groupby(["harvest_period", "indicator"], dropna=True)["tonnes"]
         .sum()
@@ -1040,10 +1418,8 @@ if page == "Overview":
         by_hp = by_hp.sort_values(["sort_year", "harvest_period", "indicator"])
         ordered_periods = list(dict.fromkeys(by_hp["harvest_period"]))
 
-        # layout: gráfico + seletor à direita
         col_chart, col_filter = st.columns([4, 1])
 
-        # --- SELECTBOX (na coluna da direita) ---
         with col_filter:
             indicator_options = ["All"] + sorted(by_hp["indicator"].dropna().unique())
             indicator_filter = st.selectbox(
@@ -1053,13 +1429,11 @@ if page == "Overview":
                 key="overview_indicator_filter",
             )
 
-        # aplicar filtro de indicador se não for "All"
         if indicator_filter != "All":
             by_hp_plot = by_hp[by_hp["indicator"] == indicator_filter].copy()
         else:
             by_hp_plot = by_hp.copy()
 
-        # paleta de verdes
         green_palette = ["#2e7d32", "#66bb6a", "#9ccc65", "#c5e1a5"]
 
         with col_chart:
@@ -1088,12 +1462,11 @@ if page == "Overview":
                     color_discrete_sequence=[green_palette[0]],
                 )
 
-            # ticks de 5 em 5 anos
             years_sorted = sorted(
                 y for y in by_hp_plot["sort_year"].dropna().unique()
             )
             if years_sorted:
-                tick_years = years_sorted[::5]  # de ~5 em 5
+                tick_years = years_sorted[::5]
                 tickvals = []
                 for y in tick_years:
                     hp = (
@@ -1109,7 +1482,6 @@ if page == "Overview":
                     ticktext=tickvals,
                 )
 
-            # hover + formato
             fig.update_traces(
                 mode="lines+markers",
                 hovertemplate="<b>%{x}</b><br>Tonnes: %{y:,.0f} t<extra></extra>",
@@ -1127,576 +1499,338 @@ if page == "Overview":
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
-                    y=1.02,      # legenda por cima do gráfico
+                    y=1.02,
                     xanchor="right",
                     x=1,
                 ),
             )
 
             st.plotly_chart(fig, use_container_width=True)
-
     else:
         st.info("No data for the current filters.")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-
-    # -------- Top 15 + Distribuição --------
-    flt_country = flt.copy()
-    flt_country = drop_aggregate_countries(flt_country, "country")
-
-    by_country = (
+    # --- Donut: Top 5 countries vs Others ---
+    flt_country = drop_aggregate_countries(flt.copy(), "country")
+    by_country_donut = (
         flt_country.groupby("country")["tonnes"]
         .sum()
         .reset_index()
         .sort_values("tonnes", ascending=False)
     )
 
-    colA, colB = st.columns(2)
-
-    with colA:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown("#### Top 15 Countries by Tonnes")
-
-        if not by_country.empty:
-            top15 = by_country.head(15).copy()
-            mean_val = top15["tonnes"].mean()
-
-            fig_bar = px.bar(
-                top15,
-                x="country",
-                y="tonnes",
-                title="Top 15 Countries by Tonnes",
-                color_discrete_sequence=["#2f5e1b"],
+    if not by_country_donut.empty:
+        top5 = by_country_donut.head(5).copy()
+        others_sum = by_country_donut["tonnes"].iloc[5:].sum()
+        if others_sum > 0:
+            top5 = pd.concat(
+                [top5, pd.DataFrame([{"country": "Others", "tonnes": others_sum}])],
+                ignore_index=True,
             )
 
-            fig_bar.add_trace(
-                go.Scatter(
-                    x=top15["country"],
-                    y=[mean_val] * len(top15),
-                    mode="lines",
-                    name="Average",
-                    line=dict(
-                        color="rgba(11,156,49,0.2)",
-                        width=3,
-                    ),
-                    hovertemplate="Average: %{y:,.0f} t<extra></extra>",
-                )
+        fig_donut = px.pie(
+            top5,
+            names="country",
+            values="tonnes",
+            hole=0.65,
+        )
+        fig_donut.update_traces(
+            textposition="inside",
+            texttemplate="%{label}<br>%{percent:.1%}",
+        )
+        fig_donut.update_layout(
+            title="Share of volume – Top 5 countries",
+            height=320,
+            showlegend=False,
+            margin=dict(l=0, r=0, t=40, b=0),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+
+        col_d1, col_d2 = st.columns([1.3, 1])
+        with col_d1:
+            st.plotly_chart(fig_donut, use_container_width=True)
+        with col_d2:
+            st.markdown(
+                """
+                **How to read this**  
+                The donut shows how much of the current selection
+                is concentrated in the top 5 countries vs the rest.
+                """
             )
-
-            fig_bar.update_layout(
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                xaxis_title="Country",
-                yaxis_title="Tonnes",
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                ),
-            )
-
-            st.plotly_chart(fig_bar, use_container_width=True)
-
-        else:
-            st.info("Sem dados.")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with colB:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown("#### Distribution by Country (%)")
-
-        if not by_country.empty:
-            dist = by_country.copy()
-            total_tonnes_dist = dist["tonnes"].sum()
-            if total_tonnes_dist > 0:
-                dist["Share %"] = dist["tonnes"] / total_tonnes_dist * 100
-            else:
-                dist["Share %"] = 0.0
-
-            dist = dist.rename(columns={"country": "Country", "tonnes": "Tonnes"})
-            dist = dist[["Country", "Tonnes", "Share %"]]
-            dist = dist.sort_values("Share %", ascending=False)
-
-            styler = (
-                dist.style.apply(style_share_column, subset=["Share %"]).format(
-                    {"Tonnes": "{:,.0f}", "Share %": "{:.1f}%"}
-                )
-            )
-
-            st.dataframe(
-                styler,
-                use_container_width=True,
-                height=400,
-            )
-
-        else:
-            st.info("Sem dados.")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # -------- Global Map by Tonnes --------
-    st.markdown("### 🌍 Global map by tonnes")
+            
+    # ===================== COUNTRY BREAKDOWN =====================
+    st.markdown("## Country breakdown")
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    flt_map = flt.copy()
-    flt_map = drop_aggregate_countries(flt_map, "country")
-    flt_map = flt_map[flt_map["harvest_year"].notna()]
+    # duas tabs: ranking + heatmap
+    tab_rank, tab_heatmap = st.tabs(
+        ["🏆 Ranking & concentration", "📊 Country vs Year (heatmap)"]
+    )
 
-    if flt_map.empty:
-        st.info("No data available for the map with the current filters.")
-        st.markdown("</div>", unsafe_allow_html=True)
-    else:
+    # Base sem agregados (EU, World, Total, etc.)
+    flt_adv = drop_aggregate_countries(flt, "country")
 
-        # ---- SELECTBOXES (ANO + INDICADOR) ----
-        col_gap, col_year, col_ind = st.columns([4.5, 1.2, 1.2])
+    # ---------- TAB 1: RANKING & CONCENTRATION ----------
+    with tab_rank:
+        st.subheader("Market structure by country")
 
-        years_available = sorted(int(y) for y in flt_map["harvest_year"].unique())
-        indicators_available = sorted(df["indicator"].dropna().unique())
-
-        # Year selector
-        with col_year:
-            year_to_use = st.selectbox(
-                "Year",
-                years_available,
-                index=len(years_available) - 1,
-                label_visibility="collapsed",
-                key="map_year_select",
-            )
-
-        # Indicator selector
-        with col_ind:
-            indicator_map = st.selectbox(
-                "Indicator",
-                indicators_available,
-                index=indicators_available.index("C") if "C" in indicators_available else 0,
-                label_visibility="collapsed",
-                key="map_indicator_select",
-            )
-
-        # filtrar por indicador escolhido
-        flt_map = flt_map[flt_map["indicator"] == indicator_map]
-
-        data_year = (
-            flt_map[flt_map["harvest_year"] == year_to_use]
-            .groupby("country", as_index=False)["tonnes"]
-            .sum()
-        )
-
-        if data_year.empty:
-            st.info("No data available for this year.")
-            st.markdown("</div>", unsafe_allow_html=True)
+        if flt_adv.empty:
+            st.info("No data available for this selection.")
         else:
-            # -------- CORES DO MAPA EM FUNÇÃO DO SUBSEGMENTO --------
-            seg = subsegment if subsegment != "(All)" else "default"
-            c_light, c_mid, c_dark = get_map_colors_for_segment(seg)
-            color_scale = [
-                [0.0, c_light],
-                [0.5, c_mid],
-                [1.0, c_dark],
-            ]
+            by_ct = (
+                flt_adv.groupby("country", dropna=True)["tonnes"]
+                .sum()
+                .reset_index()
+                .sort_values("tonnes", ascending=False)
+            )
 
-            # -------- BASE: CHOROPLETH --------
-            fig_map = go.Figure()
+            total_vol = by_ct["tonnes"].sum()
+            if total_vol <= 0:
+                st.info("Insufficient data to build ranking.")
+            else:
+                by_ct["share_%"] = by_ct["tonnes"] / total_vol * 100
+                by_ct["cum_share_%"] = by_ct["share_%"].cumsum()
 
-            fig_map.add_trace(
-                go.Choropleth(
-                    locations=data_year["country"],
-                    locationmode="country names",
-                    z=data_year["tonnes"],
-                    colorscale=color_scale,
-                    marker_line_color="white",
-                    marker_line_width=0.6,
-                    colorbar=dict(
-                        title="Tonnes",
-                        ticksuffix=" t",
-                    ),
-                    hovertemplate=(
-                        "<b>%{location}</b><br>"
-                        "Tonnes: %{z:,.0f} t"
-                        "<extra></extra>"
-                    ),
-                    showscale=True,
-                    name="Tonnes",
+                max_cats = 20
+                by_ct_plot = by_ct.head(max_cats)
+
+                fig_pareto = make_subplots(
+                    specs=[[{"secondary_y": True}]]
                 )
-            )
 
-            # -------- LABELS DOS CONTINENTES --------
-            continents = pd.DataFrame(
-                [
-                    {"name": "North America", "lon": -100, "lat": 40},
-                    {"name": "South America", "lon": -60, "lat": -20},
-                    {"name": "Europe", "lon": 15, "lat": 50},
-                    {"name": "Africa", "lon": 20, "lat": 5},
-                    {"name": "Asia", "lon": 90, "lat": 35},
-                    {"name": "Oceania", "lon": 140, "lat": -25},
-                ]
-            )
-
-            fig_map.add_trace(
-                go.Scattergeo(
-                    lon=continents["lon"],
-                    lat=continents["lat"],
-                    text=continents["name"],
-                    mode="text",
-                    textfont=dict(
-                        size=13,
-                        color="rgba(0, 0, 0, 0.55)",
-                    ),
-                    showlegend=False,
-                    hoverinfo="skip",
-                )
-            )
-
-            # -------- LABELS DOS OCEANOS --------
-            oceans = pd.DataFrame(
-                [
-                    {"name": "Atlantic Ocean", "lon": -30, "lat": 0},
-                    {"name": "Pacific Ocean", "lon": -140, "lat": -5},
-                    {"name": "Indian Ocean", "lon": 85, "lat": -20},
-                    {"name": "Arctic Ocean", "lon": 0, "lat": 75},
-                    {"name": "Southern Ocean", "lon": 20, "lat": -65},
-                ]
-            )
-
-
-            fig_map.add_trace(
-                go.Scattergeo(
-                    lon=oceans["lon"],
-                    lat=oceans["lat"],
-                    text=oceans["name"],
-                    mode="text",
-                    textfont=dict(
-                        size=12,
-                        color="rgba(0, 0, 0, 0.45)",
-                        style="italic",
-                    ),
-                    showlegend=False,
-                    hoverinfo="skip",
-                )
-            )
-
-            # -------- LAYOUT FINAL --------
-            fig_map.update_layout(
-                title_text=f"Global tonnes map (year {year_to_use}) – Indicator {indicator_map}",
-                title_x=0.01,
-                height=520,
-                margin=dict(l=0, r=0, t=40, b=0),
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                geo=dict(
-                    scope="world",
-                    projection_type="natural earth",
-                    showframe=False,
-                    showcoastlines=True,
-                    coastlinecolor="rgba(0,0,0,0.25)",
-                    showcountries=True,
-                    countrycolor="rgba(255,255,255,0.7)",
-                    showocean=True,
-                    oceancolor="#e3f2fd",
-                    showland=True,
-                    landcolor="#f9fcff",
-                    showlakes=True,
-                    lakecolor="#e3f2fd",
-                    bgcolor="rgba(0,0,0,0)",
-                ),
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                ),
-            )
-
-            st.plotly_chart(fig_map, use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-
-    # -------- resto do Overview (tabs + heatmap) --------
-    st.markdown("## Advanced Analytics")
-
-    tab1, tab2, tab3 = st.tabs(["📈 Trends", "🗺️ Geographic", "📊 Comparisons"])
-
-    with tab1:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("Year-over-Year Comparison")
-        by_year = (
-            flt.groupby("harvest_year", dropna=True)["tonnes"]
-            .sum()
-            .reset_index()
-            .sort_values("harvest_year")
-        )
-        if len(by_year) >= 2:
-            by_year["yoy_change"] = by_year["tonnes"].pct_change() * 100
-
-            col1, col2 = st.columns(2)
-            with col1:
-                fig_yoy = go.Figure()
-                fig_yoy.add_trace(
+                fig_pareto.add_trace(
                     go.Bar(
-                        x=by_year["harvest_year"],
-                        y=by_year["yoy_change"],
-                        marker_color=[
-                            "red" if x < 0 else "green" for x in by_year["yoy_change"]
-                        ],
-                        name="YoY Change %",
-                    )
+                        x=by_ct_plot["country"],
+                        y=by_ct_plot["tonnes"],
+                        name="Tonnes",
+                        hovertemplate=(
+                            "<b>%{x}</b><br>"
+                            "Tonnes: %{y:,.0f} t<extra></extra>"
+                        ),
+                    ),
+                    secondary_y=False,
                 )
-                fig_yoy.update_layout(
-                    title="Year-over-Year Growth Rate (%)",
-                    height=400,
+
+                fig_pareto.add_trace(
+                    go.Scatter(
+                        x=by_ct_plot["country"],
+                        y=by_ct_plot["cum_share_%"],
+                        name="Cumulative share %",
+                        mode="lines+markers",
+                        line=dict(color="#2e7d32", width=3),
+                        hovertemplate=(
+                            "<b>%{x}</b><br>"
+                            "Cumulative share: %{y:.1f}%<extra></extra>"
+                        ),
+                    ),
+                    secondary_y=True,
+                )
+
+                fig_pareto.update_yaxes(
+                    title_text="Tonnes",
+                    secondary_y=False,
+                )
+                fig_pareto.update_yaxes(
+                    title_text="Cumulative share (%)",
+                    range=[0, 105],
+                    ticksuffix="%",
+                    secondary_y=True,
+                )
+
+                fig_pareto.update_layout(
+                    title="Top countries and cumulative contribution to total volume",
+                    xaxis_title="Country (ordered by volume)",
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
-                )
-                st.plotly_chart(fig_yoy, use_container_width=True)
-
-            with col2:
-                st.dataframe(
-                    by_year[["harvest_year", "tonnes", "yoy_change"]].rename(
-                        columns={
-                            "harvest_year": "Year",
-                            "tonnes": "Tonnes",
-                            "yoy_change": "YoY Change %",
-                        }
+                    height=420,
+                    margin=dict(l=0, r=0, t=40, b=0),
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1,
                     ),
-                    use_container_width=True,
-                    height=400,
                 )
+
+                st.plotly_chart(fig_pareto, use_container_width=True)
+
+                with st.expander("View underlying country table"):
+                    st.dataframe(
+                        by_ct[["country", "tonnes", "share_%"]]
+                        .rename(
+                            columns={
+                                "country": "Country",
+                                "tonnes": "Tonnes",
+                                "share_%": "Share %",
+                            }
+                        )
+                        .assign(**{"Share %": lambda d: d["Share %"].round(1)}),
+                        use_container_width=True,
+                        height=350,
+                    )
+
+    # ---------- TAB 2: COUNTRY vs YEAR HEATMAP ----------
+    with tab_heatmap:
+        st.subheader("Country vs Year heatmap")
+
+        flt_heat_base = flt_adv.copy()
+
+        if flt_heat_base.empty:
+            st.info("No data available for this selection.")
         else:
-            st.info("Dados insuficientes para análise YoY (mínimo 2 anos).")
-        st.markdown("</div>", unsafe_allow_html=True)
+            with st.expander("Heatmap filters", True):
+                c1_h, c2_h, c3_h, c4_h = st.columns([1.2, 1, 1, 1.4])
 
-    with tab2:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("Top 10 Countries Ranking")
-        flt_geo = (
-            flt[flt["indicator"] == "C"]
-            if "C" in flt["indicator"].unique()
-            else flt
-        )
-        flt_geo = drop_aggregate_countries(flt_geo, "country")
-        by_country_geo = (
-            flt_geo.groupby("country", dropna=True)["tonnes"]
-            .sum()
-            .reset_index()
-            .sort_values("tonnes", ascending=False)
-            .head(10)
-        )
+                years_series = pd.to_numeric(
+                    flt_heat_base["harvest_year"], errors="coerce"
+                ).dropna()
 
-        if not by_country_geo.empty:
-            by_country_geo["rank"] = range(1, len(by_country_geo) + 1)
-            fig_rank = px.bar(
-                by_country_geo,
-                y="country",
-                x="tonnes",
-                orientation="h",
-                title="Top 10 Countries by Consumption",
-                color="tonnes",
-                color_continuous_scale="Greens",
-            )
-            fig_rank.update_layout(
-                height=500,
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                yaxis={"categoryorder": "total ascending"},
-            )
-            st.plotly_chart(fig_rank, use_container_width=True)
-        else:
-            st.info("Sem dados geográficos.")
-        st.markdown("</div>", unsafe_allow_html=True)
+                if years_series.empty:
+                    st.info("No years available for the heatmap.")
+                    heat_data = pd.DataFrame()
+                else:
+                    yr_min = int(years_series.min())
+                    yr_max = int(years_series.max())
+                    year_range = c1_h.slider(
+                        "Year range",
+                        yr_min,
+                        yr_max,
+                        (max(yr_min, yr_max - 10), yr_max),
+                    )
 
-    with tab3:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("Compare Multiple Years")
+                    only_c = c2_h.checkbox(
+                        "Only indicator C (Consumption)",
+                        value=("C" in flt_heat_base["indicator"].unique()),
+                    )
 
-        years_available = sorted(
-            [int(y) for y in flt["harvest_year"].dropna().unique()]
-        )
-        if len(years_available) >= 2:
-            selected_years = st.multiselect(
-                "Select years to compare",
-                years_available,
-                default=years_available[-2:],
-            )
+                    exclude_aggr = c3_h.checkbox(
+                        "Exclude aggregates (EU, World…)", value=True
+                    )
 
-            if len(selected_years) >= 2:
-                comparison_data = flt[flt["harvest_year"].isin(selected_years)]
-                by_year_country = (
-                    comparison_data.groupby(
-                        ["harvest_year", "country"], dropna=True
+                    metric_mode = c4_h.radio(
+                        "Metric",
+                        ["Tonnes", "Share of year total (%)"],
+                        horizontal=True,
+                        index=0,
+                    )
+
+                    flt_heat = flt_heat_base.copy()
+
+                    if only_c and "C" in flt_heat["indicator"].unique():
+                        flt_heat = flt_heat[flt_heat["indicator"] == "C"]
+
+                    flt_heat = flt_heat[
+                        pd.to_numeric(
+                            flt_heat["harvest_year"], errors="coerce"
+                        ).between(year_range[0], year_range[1])
+                    ]
+
+                    if exclude_aggr:
+                        flt_heat = drop_aggregate_countries(flt_heat, "country")
+
+                    by_ct = (
+                        flt_heat.groupby("country", dropna=True)["tonnes"]
+                        .sum()
+                        .sort_values(ascending=False)
+                    )
+                    default_countries = by_ct.head(15).index.tolist()
+                    all_countries = sorted(
+                        [
+                            c
+                            for c in flt_heat["country"].dropna().unique()
+                            if str(c).strip()
+                        ]
+                    )
+
+                    selected_countries = st.multiselect(
+                        "Countries",
+                        all_countries,
+                        default=default_countries,
+                        placeholder="Choose countries to show…",
+                    )
+
+                    heat_data = flt_heat.copy()
+                    if selected_countries:
+                        heat_data = heat_data[
+                            heat_data["country"].isin(selected_countries)
+                        ]
+
+            if heat_data.empty:
+                st.info("Insufficient data for heatmap.")
+            else:
+                by_ct_year = (
+                    heat_data.groupby(
+                        ["country", "harvest_year"], dropna=True
                     )["tonnes"]
                     .sum()
                     .reset_index()
                 )
 
-                top_countries = (
-                    by_year_country.groupby("country")["tonnes"].sum().nlargest(5).index
-                )
-                plot_data = by_year_country[
-                    by_year_country["country"].isin(top_countries)
-                ]
+                if metric_mode == "Share of year total (%)":
+                    total_by_year = by_ct_year.groupby("harvest_year")[
+                        "tonnes"
+                    ].transform("sum")
+                    by_ct_year["value"] = (
+                        by_ct_year["tonnes"] / total_by_year
+                    ) * 100
+                    colorbar_title = "% of year total"
+                    value_fmt = lambda v: f"{v:.1f}%" if pd.notna(v) else ""
+                else:
+                    by_ct_year["value"] = by_ct_year["tonnes"]
+                    colorbar_title = "Tonnes"
+                    value_fmt = lambda v: f"{v:,.0f}" if pd.notna(v) else ""
 
-                fig_comp = px.bar(
-                    plot_data,
-                    x="country",
-                    y="tonnes",
-                    color="harvest_year",
-                    barmode="group",
-                    title="Top 5 Countries - Year Comparison",
+                pivot = by_ct_year.pivot_table(
+                    index="country",
+                    columns="harvest_year",
+                    values="value",
+                    aggfunc="mean",
                 )
-                fig_comp.update_layout(
-                    height=400,
+
+                pivot = pivot.sort_index(axis=1)
+                text_matrix = pivot.applymap(value_fmt)
+
+                fig_heat = go.Figure(
+                    data=go.Heatmap(
+                        z=pivot.values,
+                        x=pivot.columns,
+                        y=pivot.index,
+                        colorscale="Greens",
+                        text=text_matrix.values,
+                        texttemplate="%{text}",
+                        textfont={"size": 10},
+                        colorbar=dict(title=colorbar_title),
+                        hovertemplate=(
+                            "Country=%{y}<br>"
+                            "Year=%{x}<br>"
+                            f"{colorbar_title}=%{{z:.2f}}"
+                            "<extra></extra>"
+                        ),
+                    )
+                )
+
+                fig_heat.update_layout(
+                    title="Production intensity by country and year",
+                    xaxis_title="Harvest Year",
+                    yaxis_title="Country",
+                    height=500,
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=0, r=0, t=40, b=0),
                 )
-                st.plotly_chart(fig_comp, use_container_width=True)
-            else:
-                st.info("Select at least two years to compare.")
-        else:
-            st.info("Insufficient data for comparison (minimum 2 years).")
-        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("Country vs Year Heatmap")
+                st.plotly_chart(fig_heat, use_container_width=True)
 
-    with st.expander("Heatmap filters", True):
-        c1_h, c2_h, c3_h, c4_h = st.columns([1.2, 1, 1, 1.4])
-
-        years_series = pd.to_numeric(flt["harvest_year"], errors="coerce").dropna()
-
-        if years_series.empty:
-            st.info("Sem anos disponíveis para o heatmap.")
-            heat_data = pd.DataFrame()
-        else:
-            yr_min = int(years_series.min())
-            yr_max = int(years_series.max())
-            year_range = c1_h.slider(
-                "Year range",
-                yr_min,
-                yr_max,
-                (max(yr_min, yr_max - 10), yr_max),
-            )
-            only_c = c2_h.checkbox(
-                "Only indicator C (Consumption)",
-                value=("C" in flt["indicator"].unique()),
-            )
-            exclude_aggr = c3_h.checkbox(
-                "Exclude aggregates (EU, World…)", value=True
-            )
-
-            metric_mode = c4_h.radio(
-                "Metric",
-                ["Tonnes", "Share of year total (%)"],
-                horizontal=True,
-                index=0,
-            )
-
-            flt_heat = flt.copy()
-            if only_c and "C" in flt_heat["indicator"].unique():
-                flt_heat = flt_heat[flt_heat["indicator"] == "C"]
-
-            flt_heat = flt_heat[
-                pd.to_numeric(flt_heat["harvest_year"], errors="coerce").between(
-                    year_range[0], year_range[1]
+                st.caption(
+                    "Each cell shows the selected metric (Tonnes or share of year total) "
+                    "for a country in a given harvest year. Darker green means higher value."
                 )
-            ]
-
-            if exclude_aggr:
-                flt_heat = drop_aggregate_countries(flt_heat, "country")
-
-            by_ct = (
-                flt_heat.groupby("country", dropna=True)["tonnes"]
-                .sum()
-                .sort_values(ascending=False)
-            )
-            default_countries = by_ct.head(15).index.tolist()
-            all_countries = sorted(
-                [c for c in flt_heat["country"].dropna().unique() if str(c).strip()]
-            )
-
-            selected_countries = st.multiselect(
-                "Countries",
-                all_countries,
-                default=default_countries,
-                placeholder="Choose countries to show…",
-            )
-
-            heat_data = flt_heat.copy()
-            if selected_countries:
-                heat_data = heat_data[heat_data["country"].isin(selected_countries)]
-
-    if "heat_data" in locals() and heat_data.empty:
-        st.info("Dados insuficientes para heatmap.")
-    elif "heat_data" in locals():
-        by_ct_year = (
-            heat_data.groupby(["country", "harvest_year"], dropna=True)["tonnes"]
-            .sum()
-            .reset_index()
-        )
-
-        if metric_mode == "Share of year total (%)":
-            total_by_year = by_ct_year.groupby("harvest_year")["tonnes"].transform(
-                "sum"
-            )
-            by_ct_year["value"] = (by_ct_year["tonnes"] / total_by_year) * 100
-            colorbar_title = "% of year total"
-            value_fmt = lambda v: f"{v:.1f}%" if pd.notna(v) else ""
-        else:
-            by_ct_year["value"] = by_ct_year["tonnes"]
-            colorbar_title = "Tonnes"
-            value_fmt = lambda v: f"{v:,.0f}" if pd.notna(v) else ""
-
-        pivot = by_ct_year.pivot_table(
-            index="country",
-            columns="harvest_year",
-            values="value",
-            aggfunc="mean",
-        )
-
-        pivot = pivot.sort_index(axis=1)
-
-        text_matrix = pivot.applymap(value_fmt)
-
-        fig_heat = go.Figure(
-            data=go.Heatmap(
-                z=pivot.values,
-                x=pivot.columns,
-                y=pivot.index,
-                colorscale="Greens",
-                text=text_matrix.values,
-                texttemplate="%{text}",
-                textfont={"size": 10},
-                colorbar=dict(title=colorbar_title),
-                hovertemplate=(
-                    "Country=%{y}<br>"
-                    "Year=%{x}<br>"
-                    f"{colorbar_title}=%{{z:.2f}}<extra></extra>"
-                ),
-            )
-        )
-
-        fig_heat.update_layout(
-            title="Production intensity by country and year",
-            xaxis_title="Harvest Year",
-            yaxis_title="Country",
-            height=500,
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=0, r=0, t=40, b=0),
-        )
-
-        st.plotly_chart(fig_heat, use_container_width=True)
-
-        st.caption(
-            "Each cell shows the selected metric (Tonnes or share of year total) "
-            "for a country in a given harvest year. Darker green means higher value."
-        )
 
     st.markdown("</div>", unsafe_allow_html=True)
-
-
+    
 # ----------------- INDEX DETAIL -----------------
 elif page == "Index Detail":
 
@@ -1992,8 +2126,7 @@ elif page == "Index Detail":
                 yaxis="y3",
             )
         )
-
-    # 👉 ESTE update_layout FICA SEMPRE FORA DOS if
+        
     fig_line_isma.update_layout(
         title=f"ISMA, BA Sales & Production over time – {sel_country}",
         xaxis=dict(title="Harvest Period"),
@@ -2052,7 +2185,6 @@ elif page == "Index Detail":
     )
 
     render_status_card(last_update_main_str, last_update_isma_str)
-
 
 # ----------------- Table Content -----------------
 elif page == "Table Content":
