@@ -507,6 +507,10 @@ def build_rename_map(columns: list[str]) -> dict[str, str]:
                     break
     return rename_map
 
+st.write("CWD (onde o Streamlit está a correr):", Path.cwd())
+st.write("EXCEL:", EXCEL_PATH.resolve(), "exists?", EXCEL_PATH.exists())
+st.write("ISMA :", ISMA_PATH.resolve(),  "exists?", ISMA_PATH.exists())
+st.write("LOGO :", LOGO_PATH.resolve(),  "exists?", LOGO_PATH.exists())
 
 @st.cache_data(show_spinner=False)
 def load_supply(path: Path) -> pd.DataFrame:
@@ -809,21 +813,22 @@ PAGE_ICONS = {
     "Table Content": "",
 }
 
-
 if "current_page" not in st.session_state:
     st.session_state.current_page = "Home"
-
 
 def _update_page_from_radio():
     st.session_state.current_page = st.session_state.nav_page_radio
 
-with st.sidebar:
-    logo_uri = _logo_data_uri(LOGO_PATH)
-
-    st.markdown('<div class="sb-panel">', unsafe_allow_html=True)
+choice = st.radio(
+    "Go to",
+    PAGES,
+    key="nav_page_radio",
+    index=PAGES.index(st.session_state.current_page),
+    on_change=_update_page_from_radio,
+)
 
     # --- LOGO E TÍTULO ---
-    st.markdown(
+st.markdown(
         f"""
         <div class="sb-brand">
           {'<img src="'+logo_uri+'" alt="logo" style="height:34px;border-radius:12px;object-fit:cover"/>' if logo_uri else ''}
@@ -836,10 +841,10 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.markdown("<div class='sb-separator'></div>", unsafe_allow_html=True)
+st.markdown("<div class='sb-separator'></div>", unsafe_allow_html=True)
 
     # --- NAVEGAÇÃO ---
-    choice = st.radio(
+choice = st.radio(
         "Go to",
         PAGES,
         format_func=lambda p: f"{PAGE_ICONS.get(p, '•')}  {p}",
@@ -849,7 +854,7 @@ with st.sidebar:
         on_change=_update_page_from_radio,
     )
 
-    st.markdown("</div>", unsafe_allow_html=True)  # Fecha .sb-panel
+st.markdown("</div>", unsafe_allow_html=True)  # Fecha .sb-panel
 page = st.session_state.current_page
 
 # ----------------- OPÇÕES DINÂMICAS -----------------
